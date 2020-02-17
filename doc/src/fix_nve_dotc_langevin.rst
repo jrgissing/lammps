@@ -38,14 +38,14 @@ Description
 """""""""""
 
 Apply a rigid-body Langevin-type integrator of the kind "Langevin C"
-as described in :ref:`(Davidchack) <Davidchack2>`
+as described in :ref:`(Davidchack) <Davidchack5>`
 to a group of atoms, which models an interaction with an implicit background
 solvent.  This command performs Brownian dynamics (BD)
 via a technique that splits the integration into a deterministic Hamiltonian
 part and the Ornstein-Uhlenbeck process for noise and damping.
 The quaternion degrees of freedom are updated though an evolution
 operator which performs a rotation in quaternion space, preserves
-the quaternion norm and is akin to :ref:`(Miller) <Miller2>`.
+the quaternion norm and is akin to :ref:`(Miller) <Miller5>`.
 
 In terms of syntax this command has been closely modelled on the
 :doc:`fix langevin <fix_langevin>` and its *angmom* option. But it combines
@@ -68,8 +68,8 @@ The total force on each atom will have the form:
    Fr is proportional to sqrt(Kb T m / (dt damp))
 
 Fc is the conservative force computed via the usual inter-particle
-interactions (:doc:`pair\_style <pair_style>`,
-:doc:`bond\_style <bond_style>`, etc).
+interactions (:doc:`pair_style <pair_style>`,
+:doc:`bond_style <bond_style>`, etc).
 
 The Ff and Fr terms are implicitly taken into account by this fix
 on a per-particle basis.
@@ -86,7 +86,7 @@ dt damp), where Kb is the Boltzmann constant, T is the desired
 temperature, m is the mass of the particle, dt is the timestep size,
 and damp is the damping factor.  Random numbers are used to randomize
 the direction and magnitude of this force as described in
-:ref:`(Dunweg) <Dunweg3>`, where a uniform random number is used (instead of
+:ref:`(Dunweg) <Dunweg5>`, where a uniform random number is used (instead of
 a Gaussian random number) for speed.
 
 
@@ -128,7 +128,7 @@ The scale factor after the *angmom* keyword gives the ratio of the rotational to
 the translational friction coefficient.
 
 An example input file can be found in /examples/USER/cgdna/examples/duplex2/.
-Further details of the implementation and stability of the integrators are contained in :ref:`(Henrich) <Henrich4>`.
+Further details of the implementation and stability of the integrators are contained in :ref:`(Henrich) <Henrich5>`.
 The preprint version of the article can be found `here <PDF/USER-CGDNA.pdf>`_.
 
 
@@ -146,7 +146,7 @@ See the :doc:`Build package <Build_package>` doc page for more info.
 Related commands
 """"""""""""""""
 
-:doc:`fix nve <fix_nve>`, :doc:`fix langevin <fix_langevin>`, :doc:`fix nve/dot <fix_nve_dot>`, :doc:`bond\_style oxdna/fene <bond_oxdna>`, :doc:`bond\_style oxdna2/fene <bond_oxdna>`, :doc:`pair\_style oxdna/excv <pair_oxdna>`, :doc:`pair\_style oxdna2/excv <pair_oxdna2>`
+:doc:`fix nve <fix_nve>`, :doc:`fix langevin <fix_langevin>`, :doc:`fix nve/dot <fix_nve_dot>`, :doc:`bond_style oxdna/fene <bond_oxdna>`, :doc:`bond_style oxdna2/fene <bond_oxdna>`, :doc:`pair_style oxdna/excv <pair_oxdna>`, :doc:`pair_style oxdna2/excv <pair_oxdna2>`
 
 **Default:** none
 
@@ -154,28 +154,18 @@ Related commands
 ----------
 
 
-.. _Davidchack2:
-
-
-
-.. _Miller2:
+.. _Davidchack5:
 
 **(Davidchack)** R.L Davidchack, T.E. Ouldridge, M.V. Tretyakov. J. Chem. Phys. 142, 144114 (2015).
 
-
-.. _Dunweg3:
+.. _Miller5:
 
 **(Miller)** T. F. Miller III, M. Eleftheriou, P. Pattnaik, A. Ndirango, G. J. Martyna, J. Chem. Phys., 116, 8649-8659 (2002).
 
-
-.. _Henrich4:
+.. _Dunweg5:
 
 **(Dunweg)** B. Dunweg, W. Paul, Int. J. Mod. Phys. C, 2, 817-27 (1991).
 
+.. _Henrich5:
 
 **(Henrich)** O. Henrich, Y. A. Gutierrez-Fosado, T. Curk, T. E. Ouldridge, Eur. Phys. J. E 41, 57 (2018).
-
-
-.. _lws: http://lammps.sandia.gov
-.. _ld: Manual.html
-.. _lc: Commands_all.html

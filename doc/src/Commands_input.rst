@@ -45,7 +45,7 @@ belong to the group.
 (3) Sometimes command B will use values that can be set by command A.
 This means command A must precede command B in the input script if it
 is to have the desired effect.  For example, the
-:doc:`read\_data <read_data>` command initializes the system by setting
+:doc:`read_data <read_data>` command initializes the system by setting
 up the simulation box and assigning atoms to processors.  If default
 values are not desired, the :doc:`processors <processors>` and
 :doc:`boundary <boundary>` commands need to be used before read\_data to
@@ -55,8 +55,3 @@ Many input script errors are detected by LAMMPS and an ERROR or
 WARNING message is printed.  The :doc:`Errors <Errors>` doc page gives
 more information on what errors mean.  The documentation for each
 command lists restrictions on how the command can be used.
-
-
-.. _lws: http://lammps.sandia.gov
-.. _ld: Manual.html
-.. _lc: Commands_all.html

@@ -402,13 +402,6 @@ void Neighbor::init()
     }
   }
 
-  // maxwt = max multiplicative factor on atom indices stored in neigh list
-
-  maxwt = 0;
-  if (special_flag[1] == 2) maxwt = 2;
-  if (special_flag[2] == 2) maxwt = 3;
-  if (special_flag[3] == 2) maxwt = 4;
-
   // ------------------------------------------------------------------
   // xhold array
 
@@ -725,6 +718,15 @@ int Neighbor::init_pair()
       create_kokkos_list(i);
     else lists[i] = new NeighList(lmp);
     lists[i]->index = i;
+    lists[i]->requestor = requests[i]->requestor;
+
+    if(requests[i]->pair) {
+        lists[i]->requestor_type = NeighList::PAIR;
+    } else if(requests[i]->fix) {
+        lists[i]->requestor_type = NeighList::FIX;
+    } else if(requests[i]->compute) {
+        lists[i]->requestor_type = NeighList::COMPUTE;
+    }
 
     if (requests[i]->pair && i < nrequest_original) {
       Pair *pair = (Pair *) requests[i]->requestor;

@@ -9,6 +9,9 @@ compute snad/atom command
 compute snav/atom command
 =========================
 
+compute snap command
+====================
+
 Syntax
 """"""
 
@@ -17,7 +20,8 @@ Syntax
 
    compute ID group-ID sna/atom rcutfac rfac0 twojmax R_1 R_2 ... w_1 w_2 ... keyword values ...
    compute ID group-ID snad/atom rcutfac rfac0 twojmax R_1 R_2 ... w_1 w_2 ... keyword values ...
-   compute ID group-ID snav/atom rcutfac rfac0 twojmax R_1 R_2 ... w_1 w_2 ... keyword values ...
+   compute ID group-ID snav/atom rcutfac rfac0 twojmax R_1 R_2 ... w_1 w_2 ... keyword values ... 
+   compute ID group-ID snap rcutfac rfac0 twojmax R_1 R_2 ... w_1 w_2 ... keyword values ...
 
 * ID, group-ID are documented in :doc:`compute <compute>` command
 * sna/atom = style name of this compute command
@@ -53,12 +57,17 @@ Examples
    compute b all sna/atom 1.4 0.99363 6 2.0 2.4 0.75 1.0 rmin0 0.0
    compute db all sna/atom 1.4 0.95 6 2.0 1.0
    compute vb all sna/atom 1.4 0.95 6 2.0 1.0
+   compute snap all snap 1.4 0.95 6 2.0 1.0
 
 Description
 """""""""""
 
-Define a computation that calculates a set of bispectrum components
-for each atom in a group.
+Define a computation that calculates a set of quantities related to the
+bispectrum components of the atoms in a group. These computes are
+used primarily for calculating the dependence of energy, force, and
+stress components on the linear coefficients in the 
+:doc:`snap pair\_style <pair_snap>`, which is useful when training a
+SNAP potential to match target data.
 
 Bispectrum components of an atom are order parameters characterizing
 the radial and angular distribution of neighbor atoms. The detailed
@@ -148,6 +157,30 @@ Again, the sum is over all atoms *i'* of atom type *I*\ .  For each atom
 virial components, each atom type, and each bispectrum component.  See
 section below on output for a detailed explanation.
 
+Compute *snap* calculates a global array contains information related
+to all three of the above per-atom computes *sna/atom*\ , *snad/atom*\ ,
+and *snav/atom*\ . The first row of the array contains the summation of 
+*sna/atom* over all atoms, but broken out by type. The last six rows
+of the array contain the summation of *snav/atom* over all atoms, broken
+out by type. In between these are 3\*\ *N* rows containing the same values
+computed by *snad/atom* (these are already summed over all atoms and
+broken out by type). The element in the last column of each row contains
+the potential energy, force, or stress, according to the row.
+These quantities correspond to the user-specified reference potential
+that must be subtracted from the target data when fitting SNAP.
+The potential energy calculation uses the built in compute *thermo\_pe*.
+The stress calculation uses a compute called *snap\_press* that is
+automatically created behind the scenes, according to the following
+command:
+
+
+.. parsed-literal::
+
+   compute snap_press all pressure NULL virial
+
+See section below on output for a detailed explanation of the data
+layout in the global array.
+
 The value of all bispectrum components will be zero for atoms not in
 the group. Neighbor atoms not in the group do not contribute to the
 bispectrum of atoms in the group.
@@ -189,15 +222,15 @@ ordered in which they are listed.
 .. note::
 
    If you have a bonded system, then the settings of
-   :doc:`special\_bonds <special_bonds>` command can remove pairwise
+   :doc:`special_bonds <special_bonds>` command can remove pairwise
    interactions between atoms in the same bond, angle, or dihedral.  This
-   is the default setting for the :doc:`special\_bonds <special_bonds>`
+   is the default setting for the :doc:`special_bonds <special_bonds>`
    command, and means those pairwise interactions do not appear in the
    neighbor list.  Because this fix uses the neighbor list, it also means
    those pairs will not be included in the calculation.  One way to get
    around this, is to write a dump file, and use the :doc:`rerun <rerun>`
    command to compute the bispectrum components for snapshots in the dump
-   file.  The rerun script can use a :doc:`special\_bonds <special_bonds>`
+   file.  The rerun script can use a :doc:`special_bonds <special_bonds>`
    command that includes all pairs in the neighbor list.
 
 ;line
@@ -239,10 +272,25 @@ block contains six sub-blocks corresponding to the *xx*\ , *yy*\ , *zz*\ ,
 notation.  Each of these sub-blocks contains one column for each
 bispectrum component, the same as for compute *sna/atom*
 
+Compute *snap* evaluates a global array. 
+The columns are arranged into
+*ntypes* blocks, listed in order of atom type *I*\ . Each block
+contains one column for each bispectrum component, the same as for compute
+*sna/atom*\ . A final column contains the corresponding energy, force component
+on an atom, or virial stress component. The rows of the array appear 
+in the following order:
+
+* 1 row: *sna/atom* quantities summed for all atoms of type *I*
+* 3\*\ *N* rows: *snad/atom* quantities, with derivatives w.r.t. x, y, and z coordinate of atom *i* appearing in consecutive rows. The atoms are sorted based on atom ID.
+* 6 rows: *snav/atom* quantities summed for all atoms of type *I*
+
 For example, if *K* =30 and ntypes=1, the number of columns in the per-atom
 arrays generated by *sna/atom*\ , *snad/atom*\ , and *snav/atom*
 are 30, 90, and 180, respectively. With *quadratic* value=1,
 the numbers of columns are 930, 2790, and 5580, respectively.
+The number of columns in the global array generated by *snap*
+are 31, and 931, respectively, while the number of rows is
+1+3\*\ *N*\ +6, where *N* is the total number of atoms.
 
 If the *quadratic* keyword value is set to 1, then additional
 columns are generated, corresponding to
@@ -272,7 +320,7 @@ LAMMPS was built with that package.  See the :doc:`Build package <Build_package>
 Related commands
 """"""""""""""""
 
-:doc:`pair\_style snap <pair_snap>`
+:doc:`pair_style snap <pair_snap>`
 
 Default
 """""""
@@ -309,8 +357,3 @@ available at `arXiv:1409.3880 <http://arxiv.org/abs/1409.3880>`_
 
 **(Varshalovich)** Varshalovich, Moskalev, Khersonskii, Quantum Theory
 of Angular Momentum, World Scientific, Singapore (1987).
-
-
-.. _lws: http://lammps.sandia.gov
-.. _ld: Manual.html
-.. _lc: Commands_all.html

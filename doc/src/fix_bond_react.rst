@@ -20,9 +20,9 @@ Syntax
 * the common keyword/values may be appended directly after 'bond/react'
 * this applies to all reaction specifications (below)
 * common\_keyword = *stabilization*
-  
+
   .. parsed-literal::
-  
+
        *stabilization* values = *no* or *yes* *group-ID* *xmax*
          *no* = no reaction site stabilization
          *yes* = perform reaction site stabilization
@@ -40,9 +40,9 @@ Syntax
 * map\_file = name of file specifying corresponding atom-IDs in the pre- and post-reacted templates
 * zero or more individual keyword/value pairs may be appended to each react argument
 * individual\_keyword = *prob* or *max\_rxn* or *stabilize\_steps* or *update\_edges*
-  
+
   .. parsed-literal::
-  
+
          *prob* values = fraction seed
            fraction = initiate reaction with this probability if otherwise eligible
            seed = random number seed (positive integer)
@@ -248,12 +248,12 @@ A discussion of correctly handling this is also provided on the
    the existing system and reaction templates. As when inserting
    molecules, enough space for this increased topology/atom must be
    reserved by using the relevant "extra" keywords to the
-   :doc:`read\_data <read_data>` or :doc:`create\_box <create_box>` commands.
+   :doc:`read_data <read_data>` or :doc:`create_box <create_box>` commands.
 
 The map file is a text document with the following format:
 
 A map file has a header and a body. The header of map file the
-contains one mandatory keyword and four optional keywords. The
+contains one mandatory keyword and five optional keywords. The
 mandatory keyword is 'equivalences':
 
 
@@ -269,10 +269,11 @@ The optional keywords are 'edgeIDs', 'deleteIDs', 'customIDs' and
 
    N *edgeIDs* = # of edge atoms N in the pre-reacted molecule template
    N *deleteIDs* = # of atoms N that are specified for deletion
+   N *chiralIDs* = # of specified chiral centers N
    N *customIDs* = # of atoms N that are specified for a custom update
    N *constraints* = # of specified reaction constraints N
 
-The body of the map file contains two mandatory sections and four
+The body of the map file contains two mandatory sections and five
 optional sections. The first mandatory section begins with the keyword
 'BondingIDs' and lists the atom IDs of the bonding atom pair in the
 pre-reacted molecule template. The second mandatory section begins
@@ -284,12 +285,14 @@ molecule template. The first optional section begins with the keyword
 'EdgeIDs' and lists the atom IDs of edge atoms in the pre-reacted
 molecule template. The second optional section begins with the keyword
 'DeleteIDs' and lists the atom IDs of pre-reaction template atoms to
-delete. The third optional section begins with the keyword 'Custom
+delete. The third optional section begins with the keyword 'ChiralIDs'
+lists the atom IDs of chiral atoms whose handedness should be
+enforced. The fourth optional section begins with the keyword 'Custom
 Edges' and allows for forcing the update of a specific atom's atomic
 charge. The first column is the ID of an atom near the edge of the
 pre-reacted molecule template, and the value of the second column is
 either 'none' or 'charges.' Further details are provided in the
-discussion of the 'update\_edges' keyword. The fourth optional section
+discussion of the 'update\_edges' keyword. The fifth optional section
 begins with the keyword 'Constraints' and lists additional criteria
 that must be satisfied in order for the reaction to occur. Currently,
 there are three types of constraints available, as discussed below.
@@ -331,6 +334,15 @@ A sample map file is given below:
 
 ----------
 
+
+The handedness of atoms that are chiral centers can be enforced by
+listing their IDs in the ChiralIDs section. A chiral atom must be
+bonded to four atoms with mutually different atom types. This feature
+uses the coordinates and types of the involved atoms in the
+pre-reaction template to determine handedness. Three atoms bonded to
+the chiral center are arbitrarily chosen, to define an oriented plane,
+and the relative position of the fourth bonded atom determines the
+chiral center's handedness.
 
 Any number of additional constraints may be specified in the
 Constraints section of the map file. The constraint of type 'distance'
@@ -378,7 +390,7 @@ the activation energy (:doc:`units <units>` of energy), and *seed* is a
 random number seed. The temperature is defined as the instantaneous
 temperature averaged over all atoms in the reaction site, and is
 calculated in the same manner as for example
-:doc:`compute\_temp\_chunk <compute_temp_chunk>`. Currently, there are no
+:doc:`compute temp/chunk <compute_temp_chunk>`. Currently, there are no
 options for additional temperature averaging or velocity-biased
 temperature calculations. A uniform random number between 0 and 1 is
 generated using *seed*\ ; if this number is less than the result of the
@@ -480,7 +492,7 @@ local command.
 Cumulative reaction counts for each reaction are written to :doc:`binary restart files <restart>`. These values are associated with the
 reaction name (react-ID). Additionally, internally-created per-atom
 properties are stored to allow for smooth restarts. None of the
-:doc:`fix\_modify <fix_modify>` options are relevant to this fix.
+:doc:`fix_modify <fix_modify>` options are relevant to this fix.
 
 This fix computes one statistic for each *react* argument that it
 stores in a global vector, of length 'number of react arguments', that
@@ -512,7 +524,7 @@ Related commands
 :doc:`fix bond/create <fix_bond_create>`,
 :doc:`fix bond/break <fix_bond_break>`,
 :doc:`fix bond/swap <fix_bond_swap>`,
-:doc:`dump local <dump>`, :doc:`special\_bonds <special_bonds>`
+:doc:`dump local <dump>`, :doc:`special_bonds <special_bonds>`
 
 Default
 """""""
@@ -529,8 +541,3 @@ update\_edges = none
 
 
 **(Gissinger)** Gissinger, Jensen and Wise, Polymer, 128, 211 (2017).
-
-
-.. _lws: http://lammps.sandia.gov
-.. _ld: Manual.html
-.. _lc: Commands_all.html
