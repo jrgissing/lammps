@@ -11,7 +11,6 @@
 
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
-
 /* ----------------------------------------------------------------------
    Contributing authors: Yuya Kurebayashi (Tohoku University, Lanczos algorithm)
                          Andrew Jewett (Scripps Research, Jacobi algorith)
@@ -23,27 +22,32 @@
 /// @file  This file contains a library of functions and classes which can
 ///        efficiently perform eigendecomposition for an extremely broad
 ///        range of matrix types: both real and complex, dense and sparse.
-///        (Matrices need not be of type double **, for example.
-///         In principle, almost any type of C++ container can be used.)
-///        Some general C++11 compatible tools for allocating matrices and
+///        Matrices need not be of type "double **", for example.
+///        In principle, almost any type of C++ container can be used.
+///        Some general C++11 compatible functions for allocating matrices and
 ///        calculating norms of real and complex vectors are also provided.
 /// @note
 ///        The "Jacobi" and "PEigenCalculator" classes are used for calculating
 ///        eigenvalues and eigenvectors of conventional dense square matrices.
-///        Availability: https://github.com/jewettaij/jacobi_pd (CC0-1.0license)
 /// @note
 ///        The "LambdaLanczos" class can calculate eigenalues and eigenvectors
 ///        of more general types of matrices, especially large, sparse matrices.
 ///        It uses C++ lambda expressions to simplify and generalize the way
 ///        matrices can be represented.  This allows it to be applied to
 ///        nearly any kind of sparse (or dense) matrix representation.
-///        Availability: https://github.com/mrcdr/lambda-lanczos (MIT license)
+/// @note
+///        The source code for Jacobi and LambdaLanczos is also available at:
+///        https://github.com/jewettaij/jacobi_pd   (CC0-1.0 license)
+///        https://github.com/mrcdr/lambda-lanczos  (MIT license)
 
+#include <cassert>
 #include <numeric>
 #include <complex>
 #include <limits>
 #include <cmath>
 #include <vector>
+#include <random>
+#include <functional>
 
 namespace math_matrix {
 
@@ -354,8 +358,8 @@ private:
 template<typename Scalar, typename Vector, typename ConstMatrix>
 class PEigenCalculator
 {
-  size_t n;            // the size of the matrix
-  vector<Scalar> evec; // preallocated vector
+  size_t n;                 // the size of the matrix
+  std::vector<Scalar> evec; // preallocated vector
 
 public:
   void SetSize(int matrix_size) {
@@ -730,11 +734,10 @@ MaxEntry(Scalar const *const *M, int& i_max, int& j_max) const {
 /// brief  Sort the rows in matrix "evec" according to the numbers in "eval".
 template<typename Scalar,typename Vector,typename Matrix,typename ConstMatrix>
 void Jacobi<Scalar, Vector, Matrix, ConstMatrix>::
-SortRows(Vector eval, // vector containing the keys used for sorting
-         Matrix evec, // matrix whose rows will be sorted according to v
-         int n,       // size of the vector and matrix
-         SortCriteria s=SORT_DECREASING_EVALS // sort decreasing order?
-         ) const
+SortRows(Vector eval,        // vector containing the keys used for sorting
+         Matrix evec,        // matrix whose rows will be sorted according to v
+         int n,              // size of the vector and matrix
+         SortCriteria sort_criteria) const // sort eigenvalues?
 {
   for (int i = 0; i < n-1; i++) {
     int i_max = i;
@@ -1220,21 +1223,22 @@ PrincipalEigen(ConstMatrix matrix,
                bool find_max)
 {
   assert(n > 0);
-  auto matmul = [&](const vector<Scalar>& in, vector<Scalar>& out) {
+  auto matmul = [&](const std::vector<Scalar>& in, std::vector<Scalar>& out) {
     for(int i = 0; i < n; i++) {
       for(int j = 0; j < n; j++) {
         out[i] += matrix[i][j]*in[j];
       }
     } 
   };
-  auto init_vec = [&](vector<Scalar>& vec) {
+  auto init_vec = [&](std::vector<Scalar>& vec) {
     for(int i = 0; i < n; i++)
       vec[i] = 0.0;
     vec[0] = 1.0;
   };
 
-  Scalar eval;
   LambdaLanczos<Scalar> ll_engine(matmul, n, find_max);
+
+  ll_engine.eigenvalue_offset = 0.0;
   if (! find_max) {
     // The Lanczos algorithm selects the eigenvalue with the largest magnitude.
     // According to Gershgorin theorem, the element in the matrix with the
@@ -1251,15 +1255,17 @@ PrincipalEigen(ConstMatrix matrix,
   }
   ll_engine.init_vector = init_vec;
 
+  Scalar eval;
+
   // This line does all of the hard work:
   size_t itern = ll_engine.run(eval, evec);
+
+  eval -= ll_engine.eigenvalue_offset; //correct for the shift we added earlier
 
   for (int i = 0; i < n; i++)
     eigenvector[i] = evec[i];
 
-  // Now correct for the offset we applied earlier
-  eval += eval_uppber_bound;
-  return eval 
+  return eval;
 }
 
 
