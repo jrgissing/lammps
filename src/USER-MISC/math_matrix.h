@@ -268,6 +268,7 @@ inline constexpr T minimum_effective_decimal() {
 ///        multiplication routine used in the Lanczos algorithm is adaptable.
 /// @details
 /// @code
+///
 /// //Example:
 /// const int n = 3;
 /// double M[n][n] = { {-1.0, -1.0, 1.0},
@@ -298,6 +299,7 @@ inline constexpr T minimum_effective_decimal() {
 ///   cout << eigenvector[i] << " ";
 /// }
 /// cout << endl;
+///
 /// @endcode
 /// This feature allows you to use a matrix whose elements are partially given,
 /// e.g. a sparse matrix whose non-zero elements are stored as a list of
