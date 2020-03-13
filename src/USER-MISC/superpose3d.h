@@ -25,11 +25,11 @@
 #ifndef _SUPERPOSE3D_H
 #define _SUPERPOSE3D_H
 
-#include "math_matrix.h"   //functions to calculate eigenvalues and eigenvectors
+#include "math_eigen.h"   //functions to calculate eigenvalues and eigenvectors
 
 namespace superpose3d {
 
-using namespace math_matrix;
+using namespace math_eigen;
 
 // -----------------------------------------------------------
 // ------------------------ INTERFACE ------------------------

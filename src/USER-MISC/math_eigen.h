@@ -16,8 +16,8 @@
                          Andrew Jewett (Scripps Research, Jacobi algorith)
 ------------------------------------------------------------------------- */
 
-#ifndef _MATH_MATRIX_H
-#define _MATH_MATRIX_H
+#ifndef _MATH_EIGEN_H
+#define _MATH_EIGEN_H
 
 /// @file  This file contains a library of functions and classes which can
 ///        efficiently perform eigendecomposition for an extremely broad
@@ -49,7 +49,7 @@
 #include <random>
 #include <functional>
 
-namespace math_matrix {
+namespace math_eigen {
 
 // --- Memory allocation for matrices ---
 
@@ -1372,7 +1372,7 @@ PrincipalEigen(ConstMatrix matrix,
 }
 
 
-} //namespace math_matrix
+} //namespace math_eigen
 
 
-#endif //#ifndef _MATH_MATRIX_H
+#endif //#ifndef _MATH_EIGEN_H
