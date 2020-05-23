@@ -53,14 +53,14 @@
 #ifdef _WIN32
 #define PSAPI_VERSION 1
 #include <windows.h>
-#include <stdint.h> // <cstdint> requires C++-11
+#include <cstdint>
 #include <psapi.h>
 #else
 #include <sys/resource.h>
 #include <sys/utsname.h>
 #endif
 
-#if defined(__linux)
+#if defined(__linux__)
 #include <malloc.h>
 #endif
 
@@ -345,7 +345,7 @@ void Info::command(int narg, char **arg)
     fprintf(out,"Maximum working set size: %.4g Mbyte\n",
             (double)pmc.PeakWorkingSetSize/1048576.0);
 #else
-#if defined(__linux)
+#if defined(__linux__)
     struct mallinfo mi;
     mi = mallinfo();
     fprintf(out,"Current reserved memory pool size: %.4g Mbyte\n",

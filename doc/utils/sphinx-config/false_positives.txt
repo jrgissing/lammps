@@ -327,6 +327,7 @@ ccache
 ccachepiecewise
 ccl
 ccmake
+ccN
 ccNspecies
 CCu
 cd
@@ -499,6 +500,7 @@ cuda
 Cuda
 CUDA
 CuH
+cuFFT
 Cummins
 Curk
 customIDs
@@ -592,6 +594,7 @@ Derjaguin
 Derlet
 Deserno
 Destree
+destructor
 detils
 Devanathan
 devel
@@ -832,6 +835,7 @@ Espanol
 Eshelby
 eshelby
 eskm
+esph
 esu
 esub
 esw
@@ -939,7 +943,6 @@ fmackay
 fmag
 fmass
 fmm
-fmsec
 fmx
 fmy
 fmz
@@ -1544,6 +1547,7 @@ libmeam
 libmessage
 libmpi
 libmpich
+libnuma
 libplumed
 libplumedKernel
 libpng
@@ -1784,6 +1788,7 @@ Militzer
 Minary
 mincap
 Mindlin
+minhbonds
 mingw
 minima
 minimizations
@@ -2072,9 +2077,9 @@ Nroff
 nrun
 Ns
 Nsample
-nsec
 Nskip
 Nspecies
+ns
 nsq
 Nstart
 nstats
@@ -2347,7 +2352,6 @@ ps
 Ps
 pscreen
 pscrozi
-psec
 pseudodynamics
 pseudopotential
 Pstart
