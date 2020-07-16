@@ -316,6 +316,7 @@ void Thermo::header()
 
   std::string hdr;
   for (int i = 0; i < nfield; i++) hdr +=  keyword[i] + std::string(" ");
+
   if (me == 0) utils::logmesg(lmp,hdr+"\n");
 }
 
@@ -483,7 +484,7 @@ void Thermo::modify_params(int narg, char **arg)
         icompute = modify->find_compute(id_compute[index_press_vector]);
         if (icompute < 0) error->all(FLERR,
                                      "Pressure ID for thermo does not exist");
-      } else icompute = modify->find_compute((char *) "thermo_press");
+      } else icompute = modify->find_compute("thermo_press");
 
       modify->compute[icompute]->reset_extra_compute_fix(arg[iarg+1]);
 
