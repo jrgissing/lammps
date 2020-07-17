@@ -11,27 +11,28 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
-#ifndef LMP_MLIAP_MODEL_QUADRATIC_H
-#define LMP_MLIAP_MODEL_QUADRATIC_H
+#ifdef FIX_CLASS
 
-#include "mliap_model.h"
+FixStyle(bond/create/angle,FixBondCreateAngle)
+
+#else
+
+#ifndef LMP_FIX_BOND_CREATE_ANGLE_H
+#define LMP_FIX_BOND_CREATE_ANGLE_H
+
+#include "fix_bond_create.h"
 
 namespace LAMMPS_NS {
 
-class MLIAPModelQuadratic : public MLIAPModel {
-public:
-  MLIAPModelQuadratic(LAMMPS*, char* = NULL);
-  ~MLIAPModelQuadratic();
-  virtual int get_nparams();
-  virtual int get_gamma_nnz(class MLIAPData*);
-  virtual void compute_gradients(class MLIAPData*);
-  virtual void compute_gradgrads(class MLIAPData*);
-  virtual void compute_force_gradients(class MLIAPData*);
+class FixBondCreateAngle : public FixBondCreate {
+ public:
+  FixBondCreateAngle(class LAMMPS *, int, char **);
 
-protected:
+ private:
+  int constrain(int, int, double, double);
 };
 
 }
 
 #endif
-
+#endif
