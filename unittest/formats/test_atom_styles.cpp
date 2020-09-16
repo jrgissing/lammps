@@ -28,6 +28,7 @@
 #include <cmath>
 #include <cstdio>
 #include <cstring>
+#include <vector>
 #include <mpi.h>
 
 #if !defined(_FORTIFY_SOURCE) || (_FORTIFY_SOURCE == 0)
@@ -97,7 +98,7 @@ TEST_F(AtomStyleTest, atomic)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_EQ(lmp->atom->nmax, 1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->nellipsoids, 0);
     ASSERT_EQ(lmp->atom->nlines, 0);
     ASSERT_EQ(lmp->atom->ntris, 0);
@@ -274,7 +275,7 @@ TEST_F(AtomStyleTest, atomic)
     ASSERT_EQ(lmp->atom->extra_border, nullptr);
     ASSERT_EQ(lmp->atom->extra, nullptr);
     ASSERT_EQ(lmp->atom->sametag, nullptr);
-    ASSERT_EQ(lmp->atom->map_style, 0);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_NONE);
     ASSERT_EQ(lmp->atom->map_user, 0);
     ASSERT_EQ(lmp->atom->map_tag_max, -1);
 
@@ -290,7 +291,7 @@ TEST_F(AtomStyleTest, atomic)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_EQ(lmp->atom->nmax, 1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 0);
 
     ASSERT_EQ(lmp->atom->molecule_flag, 0);
@@ -318,13 +319,13 @@ TEST_F(AtomStyleTest, atomic)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 2);
 
     ASSERT_NE(lmp->atom->mass, nullptr);
     ASSERT_NE(lmp->atom->mass_setflag, nullptr);
     ASSERT_NE(lmp->atom->sametag, nullptr);
-    ASSERT_EQ(lmp->atom->map_style, 2);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_HASH);
     ASSERT_EQ(lmp->atom->map_user, 2);
     ASSERT_EQ(lmp->atom->map_tag_max, 4);
     if (!verbose) ::testing::internal::CaptureStdout();
@@ -344,7 +345,7 @@ TEST_F(AtomStyleTest, atomic)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 2);
 
     auto x   = lmp->atom->x;
@@ -379,7 +380,7 @@ TEST_F(AtomStyleTest, atomic)
     ASSERT_NEAR(lmp->atom->mass[2], 2.4, 1.0e-14);
     ASSERT_EQ(lmp->atom->mass_setflag[1], 1);
     ASSERT_EQ(lmp->atom->mass_setflag[2], 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 4);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
@@ -399,7 +400,7 @@ TEST_F(AtomStyleTest, atomic)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 2);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 0);
 
@@ -422,7 +423,7 @@ TEST_F(AtomStyleTest, atomic)
     ASSERT_NEAR(lmp->atom->mass[2], 2.4, 1.0e-14);
     ASSERT_EQ(lmp->atom->mass_setflag[1], 1);
     ASSERT_EQ(lmp->atom->mass_setflag[2], 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 3);
     if (!verbose) ::testing::internal::CaptureStdout();
@@ -500,7 +501,7 @@ TEST_F(AtomStyleTest, charge)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_EQ(lmp->atom->nmax, 1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->nellipsoids, 0);
     ASSERT_EQ(lmp->atom->nlines, 0);
     ASSERT_EQ(lmp->atom->ntris, 0);
@@ -677,7 +678,7 @@ TEST_F(AtomStyleTest, charge)
     ASSERT_EQ(lmp->atom->extra_border, nullptr);
     ASSERT_EQ(lmp->atom->extra, nullptr);
     ASSERT_EQ(lmp->atom->sametag, nullptr);
-    ASSERT_EQ(lmp->atom->map_style, 0);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_NONE);
     ASSERT_EQ(lmp->atom->map_user, 0);
     ASSERT_EQ(lmp->atom->map_tag_max, -1);
 
@@ -702,7 +703,7 @@ TEST_F(AtomStyleTest, charge)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 2);
 
     ASSERT_NE(lmp->atom->mass, nullptr);
@@ -724,12 +725,12 @@ TEST_F(AtomStyleTest, charge)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 2);
     ASSERT_EQ(lmp->atom->q_flag, 1);
     ASSERT_NE(lmp->atom->sametag, nullptr);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 4);
 
@@ -786,7 +787,7 @@ TEST_F(AtomStyleTest, charge)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 2);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 0);
     ASSERT_EQ(lmp->atom->map_tag_max, 3);
@@ -851,7 +852,7 @@ TEST_F(AtomStyleTest, sphere)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_EQ(lmp->atom->nmax, 1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->nellipsoids, 0);
     ASSERT_EQ(lmp->atom->nlines, 0);
     ASSERT_EQ(lmp->atom->ntris, 0);
@@ -1028,7 +1029,7 @@ TEST_F(AtomStyleTest, sphere)
     ASSERT_EQ(lmp->atom->extra_border, nullptr);
     ASSERT_EQ(lmp->atom->extra, nullptr);
     ASSERT_EQ(lmp->atom->sametag, nullptr);
-    ASSERT_EQ(lmp->atom->map_style, 0);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_NONE);
     ASSERT_EQ(lmp->atom->map_user, 0);
     ASSERT_EQ(lmp->atom->map_tag_max, -1);
 
@@ -1055,7 +1056,7 @@ TEST_F(AtomStyleTest, sphere)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 2);
 
     ASSERT_EQ(lmp->atom->mass, nullptr);
@@ -1078,14 +1079,14 @@ TEST_F(AtomStyleTest, sphere)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 2);
     ASSERT_EQ(lmp->atom->radius_flag, 1);
     ASSERT_EQ(lmp->atom->omega_flag, 1);
     ASSERT_EQ(lmp->atom->rmass_flag, 1);
     ASSERT_NE(lmp->atom->sametag, nullptr);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 4);
 
@@ -1152,7 +1153,7 @@ TEST_F(AtomStyleTest, sphere)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 2);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 4);
@@ -1191,7 +1192,7 @@ TEST_F(AtomStyleTest, ellipsoid)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_EQ(lmp->atom->nmax, 1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->nellipsoids, 0);
     ASSERT_EQ(lmp->atom->nlines, 0);
     ASSERT_EQ(lmp->atom->ntris, 0);
@@ -1368,7 +1369,7 @@ TEST_F(AtomStyleTest, ellipsoid)
     ASSERT_EQ(lmp->atom->extra_border, nullptr);
     ASSERT_EQ(lmp->atom->extra, nullptr);
     ASSERT_EQ(lmp->atom->sametag, nullptr);
-    ASSERT_EQ(lmp->atom->map_style, 0);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_NONE);
     ASSERT_EQ(lmp->atom->map_user, 0);
     ASSERT_EQ(lmp->atom->map_tag_max, -1);
 
@@ -1399,7 +1400,7 @@ TEST_F(AtomStyleTest, ellipsoid)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->nextra_grow, 0);
     ASSERT_EQ(lmp->atom->nextra_restart, 0);
@@ -1436,13 +1437,13 @@ TEST_F(AtomStyleTest, ellipsoid)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->ellipsoid_flag, 1);
     ASSERT_NE(lmp->atom->ellipsoid, nullptr);
     ASSERT_NE(lmp->atom->sametag, nullptr);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 6);
 
@@ -1554,7 +1555,7 @@ TEST_F(AtomStyleTest, ellipsoid)
     ASSERT_EQ(lmp->atom->nellipsoids, 4);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 0);
     ASSERT_EQ(lmp->atom->map_tag_max, 12);
@@ -1699,7 +1700,7 @@ TEST_F(AtomStyleTest, line)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_EQ(lmp->atom->nmax, 1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->nellipsoids, 0);
     ASSERT_EQ(lmp->atom->nlines, 0);
     ASSERT_EQ(lmp->atom->ntris, 0);
@@ -1876,7 +1877,7 @@ TEST_F(AtomStyleTest, line)
     ASSERT_EQ(lmp->atom->extra_border, nullptr);
     ASSERT_EQ(lmp->atom->extra, nullptr);
     ASSERT_EQ(lmp->atom->sametag, nullptr);
-    ASSERT_EQ(lmp->atom->map_style, 0);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_NONE);
     ASSERT_EQ(lmp->atom->map_user, 0);
     ASSERT_EQ(lmp->atom->map_tag_max, -1);
 
@@ -1907,7 +1908,7 @@ TEST_F(AtomStyleTest, line)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 3);
 
     ASSERT_EQ(lmp->atom->mass, nullptr);
@@ -1932,13 +1933,13 @@ TEST_F(AtomStyleTest, line)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->line_flag, 1);
     ASSERT_NE(lmp->atom->line, nullptr);
     ASSERT_NE(lmp->atom->sametag, nullptr);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 6);
 
@@ -2032,7 +2033,7 @@ TEST_F(AtomStyleTest, line)
     ASSERT_EQ(lmp->atom->nlines, 4);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 0);
     ASSERT_EQ(lmp->atom->map_tag_max, 12);
@@ -2136,7 +2137,7 @@ TEST_F(AtomStyleTest, tri)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_EQ(lmp->atom->nmax, 1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->nellipsoids, 0);
     ASSERT_EQ(lmp->atom->nlines, 0);
     ASSERT_EQ(lmp->atom->ntris, 0);
@@ -2313,7 +2314,7 @@ TEST_F(AtomStyleTest, tri)
     ASSERT_EQ(lmp->atom->extra_border, nullptr);
     ASSERT_EQ(lmp->atom->extra, nullptr);
     ASSERT_EQ(lmp->atom->sametag, nullptr);
-    ASSERT_EQ(lmp->atom->map_style, 0);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_NONE);
     ASSERT_EQ(lmp->atom->map_user, 0);
     ASSERT_EQ(lmp->atom->map_tag_max, -1);
 
@@ -2344,7 +2345,7 @@ TEST_F(AtomStyleTest, tri)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->nextra_grow, 0);
     ASSERT_EQ(lmp->atom->nextra_restart, 0);
@@ -2381,13 +2382,13 @@ TEST_F(AtomStyleTest, tri)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->tri_flag, 1);
     ASSERT_NE(lmp->atom->tri, nullptr);
     ASSERT_NE(lmp->atom->sametag, nullptr);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 6);
 
@@ -2542,7 +2543,7 @@ TEST_F(AtomStyleTest, tri)
     ASSERT_EQ(lmp->atom->ntris, 4);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 0);
     ASSERT_EQ(lmp->atom->map_tag_max, 12);
@@ -2711,7 +2712,7 @@ TEST_F(AtomStyleTest, body_nparticle)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_EQ(lmp->atom->nmax, 1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->nellipsoids, 0);
     ASSERT_EQ(lmp->atom->nlines, 0);
     ASSERT_EQ(lmp->atom->ntris, 0);
@@ -2888,7 +2889,7 @@ TEST_F(AtomStyleTest, body_nparticle)
     ASSERT_EQ(lmp->atom->extra_border, nullptr);
     ASSERT_EQ(lmp->atom->extra, nullptr);
     ASSERT_EQ(lmp->atom->sametag, nullptr);
-    ASSERT_EQ(lmp->atom->map_style, 0);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_NONE);
     ASSERT_EQ(lmp->atom->map_user, 0);
     ASSERT_EQ(lmp->atom->map_tag_max, -1);
 
@@ -2950,7 +2951,7 @@ TEST_F(AtomStyleTest, body_nparticle)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->nextra_grow, 0);
     ASSERT_EQ(lmp->atom->nextra_restart, 0);
@@ -3125,13 +3126,13 @@ TEST_F(AtomStyleTest, body_nparticle)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->body_flag, 1);
     ASSERT_NE(lmp->atom->body, nullptr);
     ASSERT_NE(lmp->atom->sametag, nullptr);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 6);
 
@@ -3299,7 +3300,7 @@ TEST_F(AtomStyleTest, body_nparticle)
     ASSERT_EQ(lmp->atom->nbodies, 4);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 0);
+    ASSERT_EQ(lmp->atom->molecular, Atom::ATOMIC);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 0);
     ASSERT_EQ(lmp->atom->map_tag_max, 12);
@@ -3444,7 +3445,7 @@ TEST_F(AtomStyleTest, bond)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_EQ(lmp->atom->nmax, 1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->nellipsoids, 0);
     ASSERT_EQ(lmp->atom->nlines, 0);
     ASSERT_EQ(lmp->atom->ntris, 0);
@@ -3656,7 +3657,7 @@ TEST_F(AtomStyleTest, bond)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->nextra_grow, 0);
     ASSERT_EQ(lmp->atom->nextra_restart, 0);
@@ -3700,11 +3701,11 @@ TEST_F(AtomStyleTest, bond)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_NE(lmp->atom->sametag, nullptr);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 6);
 
@@ -3759,11 +3760,11 @@ TEST_F(AtomStyleTest, bond)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_NE(lmp->atom->sametag, nullptr);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 6);
 
@@ -3853,7 +3854,7 @@ TEST_F(AtomStyleTest, bond)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 0);
     ASSERT_EQ(lmp->atom->map_tag_max, 12);
@@ -3961,7 +3962,7 @@ TEST_F(AtomStyleTest, angle)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_EQ(lmp->atom->nmax, 1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->nellipsoids, 0);
     ASSERT_EQ(lmp->atom->nlines, 0);
     ASSERT_EQ(lmp->atom->ntris, 0);
@@ -4180,7 +4181,7 @@ TEST_F(AtomStyleTest, angle)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->nextra_grow, 0);
     ASSERT_EQ(lmp->atom->nextra_restart, 0);
@@ -4226,11 +4227,11 @@ TEST_F(AtomStyleTest, angle)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_NE(lmp->atom->sametag, nullptr);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 6);
 
@@ -4320,11 +4321,11 @@ TEST_F(AtomStyleTest, angle)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_NE(lmp->atom->sametag, nullptr);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 6);
 
@@ -4415,7 +4416,7 @@ TEST_F(AtomStyleTest, angle)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 0);
     ASSERT_EQ(lmp->atom->map_tag_max, 12);
@@ -4495,7 +4496,7 @@ TEST_F(AtomStyleTest, full_ellipsoid)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_EQ(lmp->atom->nmax, 1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->nellipsoids, 0);
     ASSERT_EQ(lmp->atom->nlines, 0);
     ASSERT_EQ(lmp->atom->ntris, 0);
@@ -4722,7 +4723,7 @@ TEST_F(AtomStyleTest, full_ellipsoid)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->nextra_grow, 0);
     ASSERT_EQ(lmp->atom->nextra_restart, 0);
@@ -4768,13 +4769,13 @@ TEST_F(AtomStyleTest, full_ellipsoid)
     ASSERT_EQ(lmp->atom->nghost, 0);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->ellipsoid_flag, 1);
     ASSERT_NE(lmp->atom->ellipsoid, nullptr);
     ASSERT_NE(lmp->atom->sametag, nullptr);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 1);
-    ASSERT_EQ(lmp->atom->map_style, 1);
+    ASSERT_EQ(lmp->atom->map_style, Atom::MAP_ARRAY);
     ASSERT_EQ(lmp->atom->map_user, 1);
     ASSERT_EQ(lmp->atom->map_tag_max, 6);
 
@@ -4900,7 +4901,7 @@ TEST_F(AtomStyleTest, full_ellipsoid)
     ASSERT_EQ(lmp->atom->nellipsoids, 4);
     ASSERT_NE(lmp->atom->nmax, -1);
     ASSERT_EQ(lmp->atom->tag_enable, 1);
-    ASSERT_EQ(lmp->atom->molecular, 1);
+    ASSERT_EQ(lmp->atom->molecular, Atom::MOLECULAR);
     ASSERT_EQ(lmp->atom->ntypes, 3);
     ASSERT_EQ(lmp->atom->tag_consecutive(), 0);
     ASSERT_EQ(lmp->atom->map_tag_max, 12);

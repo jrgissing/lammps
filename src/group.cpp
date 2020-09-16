@@ -12,30 +12,28 @@
 ------------------------------------------------------------------------- */
 
 #include "group.h"
-#include <mpi.h>
-#include <cmath>
-#include <cstring>
-#include <string>
-#include <utility>
-#include "domain.h"
+
 #include "atom.h"
-#include "force.h"
 #include "comm.h"
-#include "region.h"
-#include "modify.h"
-#include "fix.h"
 #include "compute.h"
-#include "output.h"
-#include "input.h"
-#include "variable.h"
+#include "domain.h"
 #include "dump.h"
+#include "error.h"
+#include "fix.h"
+#include "force.h"
+#include "input.h"
 #include "math_extra.h"
 #include "memory.h"
-#include "error.h"
-#include "utils.h"
-#include "fmt/format.h"
+#include "modify.h"
+#include "output.h"
+#include "region.h"
+#include "variable.h"
 
+#include <cmath>
+#include <cstring>
 #include <map>
+#include <utility>
+#include <vector>
 
 using namespace LAMMPS_NS;
 
@@ -60,7 +58,7 @@ Group::Group(LAMMPS *lmp) : Pointers(lmp)
   inversemask = new int[MAX_GROUP];
   dynamic = new int[MAX_GROUP];
 
-  for (int i = 0; i < MAX_GROUP; i++) names[i] = NULL;
+  for (int i = 0; i < MAX_GROUP; i++) names[i] = nullptr;
   for (int i = 0; i < MAX_GROUP; i++) bitmask[i] = 1 << i;
   for (int i = 0; i < MAX_GROUP; i++) inversemask[i] = bitmask[i] ^ ~0;
   for (int i = 0; i < MAX_GROUP; i++) dynamic[i] = 0;
@@ -128,7 +126,7 @@ void Group::assign(int narg, char **arg)
       modify->delete_fix(std::string("GROUP_") + names[igroup]);
 
     delete [] names[igroup];
-    names[igroup] = NULL;
+    names[igroup] = nullptr;
     dynamic[igroup] = 0;
     ngroup--;
 
@@ -237,8 +235,8 @@ void Group::assign(int narg, char **arg)
         bound2 = utils::tnumeric(FLERR,arg[4],false,lmp);
       } else if (narg != 4) error->all(FLERR,"Illegal group command");
 
-      int *attribute = NULL;
-      tagint *tattribute = NULL;
+      int *attribute = nullptr;
+      tagint *tattribute = nullptr;
       if (category == TYPE) attribute = atom->type;
       else if (category == MOLECULE) tattribute = atom->molecule;
       else if (category == ID) tattribute = atom->tag;
@@ -298,8 +296,8 @@ void Group::assign(int narg, char **arg)
     // args = list of values
 
     } else {
-      int *attribute = NULL;
-      tagint *tattribute = NULL;
+      int *attribute = nullptr;
+      tagint *tattribute = nullptr;
       if (category == TYPE) attribute = atom->type;
       else if (category == MOLECULE) tattribute = atom->molecule;
       else if (category == ID) tattribute = atom->tag;
@@ -312,9 +310,9 @@ void Group::assign(int narg, char **arg)
         if (strchr(arg[iarg],':')) {
           ptr = strtok(arg[iarg],":");
           start = utils::tnumeric(FLERR,ptr,false,lmp);
-          ptr = strtok(NULL,":");
+          ptr = strtok(nullptr,":");
           stop = utils::tnumeric(FLERR,ptr,false,lmp);
-          ptr = strtok(NULL,":");
+          ptr = strtok(nullptr,":");
           if (ptr) delta = utils::tnumeric(FLERR,ptr,false,lmp);
         } else {
           start = stop = utils::tnumeric(FLERR,arg[iarg],false,lmp);
@@ -538,7 +536,7 @@ void Group::assign(int narg, char **arg)
 
 void Group::assign(const std::string &groupcmd)
 {
-  std::vector<std::string> args = utils::split_words(groupcmd);
+  auto args = utils::split_words(groupcmd);
   char **newarg = new char*[args.size()];
   int i=0;
   for (const auto &arg : args) {
@@ -619,7 +617,7 @@ int Group::find_or_create(const char *name)
 int Group::find_unused()
 {
   for (int igroup = 0; igroup < MAX_GROUP; igroup++)
-    if (names[igroup] == NULL) return igroup;
+    if (names[igroup] == nullptr) return igroup;
   return -1;
 }
 
@@ -656,7 +654,7 @@ void Group::add_molecules(int /*igroup*/, int bit)
   for (pos = hash->begin(); pos != hash->end(); ++pos) list[n++] = pos->first;
 
   molbit = bit;
-  comm->ring(n,sizeof(tagint),list,1,molring,NULL,(void *)this);
+  comm->ring(n,sizeof(tagint),list,1,molring,nullptr,(void *)this);
 
   delete hash;
   memory->destroy(list);
@@ -726,7 +724,7 @@ void Group::read_restart(FILE *fp)
 
   for (i = 0; i < MAX_GROUP; i++) delete [] names[i];
 
-  if (me == 0) utils::sfread(FLERR,&ngroup,sizeof(int),1,fp,NULL,error);
+  if (me == 0) utils::sfread(FLERR,&ngroup,sizeof(int),1,fp,nullptr,error);
   MPI_Bcast(&ngroup,1,MPI_INT,0,world);
 
   // use count to not change restart format with deleted groups
@@ -735,17 +733,17 @@ void Group::read_restart(FILE *fp)
   int count = 0;
   for (i = 0; i < MAX_GROUP; i++) {
     if (count == ngroup) {
-      names[i] = NULL;
+      names[i] = nullptr;
       continue;
     }
-    if (me == 0) utils::sfread(FLERR,&n,sizeof(int),1,fp,NULL,error);
+    if (me == 0) utils::sfread(FLERR,&n,sizeof(int),1,fp,nullptr,error);
     MPI_Bcast(&n,1,MPI_INT,0,world);
     if (n) {
       names[i] = new char[n];
-      if (me == 0) utils::sfread(FLERR,names[i],sizeof(char),n,fp,NULL,error);
+      if (me == 0) utils::sfread(FLERR,names[i],sizeof(char),n,fp,nullptr,error);
       MPI_Bcast(names[i],n,MPI_CHAR,0,world);
       count++;
-    } else names[i] = NULL;
+    } else names[i] = nullptr;
   }
 }
 

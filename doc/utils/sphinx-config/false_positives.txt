@@ -1003,6 +1003,7 @@ formatarg
 formulae
 Forschungszentrum
 Fortran
+fortran
 Fosado
 fourier
 fp
@@ -1300,6 +1301,7 @@ initializations
 initio
 InP
 inregion
+instantiation
 Institut
 integrators
 Integrators
@@ -1355,6 +1357,7 @@ iva
 Ivanov
 Ivector
 Iw
+iwyu
 ixcm
 ixx
 Ixx
@@ -1751,6 +1754,7 @@ Mattox
 Mattson
 maxangle
 maxbond
+maxchunk
 maxelt
 maxeval
 maxfiles
@@ -1974,6 +1978,7 @@ MxN
 myCompute
 myIndex
 mylammps
+MyPool
 mysocket
 myTemp
 myVec
@@ -3450,6 +3455,7 @@ zmin
 zmq
 zN
 zs
+zst
 zsu
 zu
 zx
@@ -3459,6 +3465,7 @@ zz
 Zm
 PowerShell
 filesystems
+Zstandard
 Zstd
 zstd
 checksum

@@ -16,17 +16,16 @@
 ------------------------------------------------------------------------- */
 
 #include "body_rounded_polyhedron.h"
-#include <cmath>
-#include <cstring>
-#include <cstdlib>
-#include "my_pool_chunk.h"
-#include "atom_vec_body.h"
+
 #include "atom.h"
-#include "force.h"
+#include "atom_vec_body.h"
+#include "error.h"
 #include "math_extra.h"
 #include "memory.h"
-#include "error.h"
-#include "fmt/format.h"
+#include "my_pool_chunk.h"
+
+#include <cmath>
+#include <cstring>
 
 using namespace LAMMPS_NS;
 
@@ -123,7 +122,7 @@ int BodyRoundedPolyhedron::nfaces(AtomVecBody::Bonus *bonus)
 double *BodyRoundedPolyhedron::faces(AtomVecBody::Bonus *bonus)
 {
   int nvertices = bonus->ivalue[0];
-  if (nvertices == 1 || nvertices == 2) return NULL;
+  if (nvertices == 1 || nvertices == 2) return nullptr;
   return bonus->dvalue+3*nsub(bonus)+2*nedges(bonus);
 }
 
@@ -374,7 +373,7 @@ void BodyRoundedPolyhedron::data_body(int ibonus, int ninteger, int ndouble,
 
 /* ----------------------------------------------------------------------
    pack data struct for one body into buf for writing to data file
-   if buf is NULL, just return buffer size
+   if buf is a null pointer, just return buffer size
 ------------------------------------------------------------------------- */
 
 int BodyRoundedPolyhedron::pack_data_body(tagint atomID, int ibonus, double *buf)

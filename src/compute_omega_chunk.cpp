@@ -12,7 +12,7 @@
 ------------------------------------------------------------------------- */
 
 #include "compute_omega_chunk.h"
-#include <mpi.h>
+
 #include <cstring>
 #include "atom.h"
 #include "update.h"
@@ -31,8 +31,8 @@ using namespace LAMMPS_NS;
 
 ComputeOmegaChunk::ComputeOmegaChunk(LAMMPS *lmp, int narg, char **arg) :
   Compute(lmp, narg, arg),
-  idchunk(NULL),massproc(NULL),masstotal(NULL),com(NULL),comall(NULL),
-  inertia(NULL),inertiaall(NULL),angmom(NULL),angmomall(NULL),omega(NULL)
+  idchunk(nullptr),massproc(nullptr),masstotal(nullptr),com(nullptr),comall(nullptr),
+  inertia(nullptr),inertiaall(nullptr),angmom(nullptr),angmomall(nullptr),omega(nullptr)
 {
   if (narg != 4) error->all(FLERR,"Illegal compute omega/chunk command");
 
