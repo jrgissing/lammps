@@ -84,7 +84,7 @@ static void ptr_argument_warning()
   try
 
 #define END_CAPTURE \
-  catch(LAMMPSAbortException & ae) { \
+  catch(LAMMPSAbortException &ae) { \
     int nprocs = 0; \
     MPI_Comm_size(ae.universe, &nprocs ); \
     \
@@ -93,7 +93,7 @@ static void ptr_argument_warning()
     } else { \
       error->set_last_error(ae.message, ERROR_NORMAL); \
     } \
-  } catch(LAMMPSException & e) { \
+  } catch(LAMMPSException &e) { \
     error->set_last_error(e.message, ERROR_NORMAL); \
   }
 #else
@@ -166,7 +166,7 @@ void *lammps_open(int argc, char **argv, MPI_Comm comm, void **ptr)
     lmp = new LAMMPS(argc, argv, comm);
     if (ptr) *ptr = (void *) lmp;
   }
-  catch(LAMMPSException & e) {
+  catch(LAMMPSException &e) {
     fmt::print(stderr, "LAMMPS Exception: {}", e.message);
     *ptr = nullptr;
   }
@@ -4252,7 +4252,7 @@ int lammps_find_compute_neighlist(void* handle, char * id, int request) {
     }
   }
 
-  if (compute == nullptr) {
+  if (compute != nullptr) {
     // find neigh list
     for (int i = 0; i < lmp->neighbor->nlist; i++) {
       NeighList * list = lmp->neighbor->lists[i];
