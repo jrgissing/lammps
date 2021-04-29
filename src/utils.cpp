@@ -165,6 +165,42 @@ const char *utils::guesspath(char *buf, int len, FILE *fp)
   return buf;
 }
 
+// read line into buffer. if line is too long keep reading until EOL or EOF
+// but return only the first part with a newline at the end.
+
+char *utils::fgets_trunc(char *buf, int size, FILE *fp)
+{
+  constexpr int MAXDUMMY = 256;
+  char dummy[MAXDUMMY];
+  char *ptr = fgets(buf,size,fp);
+
+  // EOF
+  if (!ptr) return nullptr;
+
+  int n = strlen(buf);
+
+  // line is shorter than buffer, append newline if needed,
+  if (n < size-2) {
+    if (buf[n-1] != '\n') {
+      buf[n] = '\n';
+      buf[n+1] = '\0';
+    }
+    return buf;
+
+    // line fits exactly. overwrite last but one character.
+  } else buf[size-2] = '\n';
+
+  // continue reading into dummy buffer until end of line or file
+  do {
+    ptr = fgets(dummy,MAXDUMMY,fp);
+    if (ptr) n = strlen(ptr);
+    else n = 0;
+  } while (n == MAXDUMMY-1 && ptr[MAXDUMMY-1] != '\n');
+
+  // return first chunk
+  return buf;
+}
+
 #define MAXPATHLENBUF 1024
 /* like fgets() but aborts with an error or EOF is encountered */
 void utils::sfgets(const char *srcname, int srcline, char *s, int size,
@@ -221,6 +257,35 @@ void utils::sfread(const char *srcname, int srcline, void *s, size_t size,
     if (error) error->one(srcname,srcline,errmsg);
   }
   return;
+}
+
+/* ------------------------------------------------------------------ */
+
+/* read N lines and broadcast */
+int utils::read_lines_from_file(FILE *fp, int nlines, int nmax,
+                                char *buffer, int me, MPI_Comm comm)
+{
+  char *ptr = buffer;
+  *ptr = '\0';
+
+  if (me == 0) {
+    if (fp) {
+      for (int i = 0; i < nlines; i++) {
+        ptr = fgets_trunc(ptr,nmax,fp);
+        if (!ptr) break; // EOF?
+        // advance ptr to end of string
+        ptr += strlen(ptr);
+        // ensure buffer is null terminated. null char is start of next line.
+        *ptr = '\0';
+      }
+    }
+  }
+
+  int n = strlen(buffer);
+  MPI_Bcast(&n,1,MPI_INT,0,comm);
+  if (n == 0) return 1;
+  MPI_Bcast(buffer,n+1,MPI_CHAR,0,comm);
+  return 0;
 }
 
 /* ------------------------------------------------------------------ */
@@ -673,6 +738,18 @@ std::string utils::utf8_subst(const std::string &line)
         // ZERO WIDTH SPACE (U+200B)
         if ((in[i] == 0xe2U) && (in[i+1] == 0x80U) && (in[i+2] == 0x8bU))
           out += ' ', i += 2;
+        // LEFT SINGLE QUOTATION MARK (U+2018)
+        if ((in[i] == 0xe2U) && (in[i+1] == 0x80U) && (in[i+2] == 0x98U))
+          out += '\'', i += 2;
+        // RIGHT SINGLE QUOTATION MARK (U+2019)
+        if ((in[i] == 0xe2U) && (in[i+1] == 0x80U) && (in[i+2] == 0x99U))
+          out += '\'', i += 2;
+        // LEFT DOUBLE QUOTATION MARK (U+201C)
+        if ((in[i] == 0xe2U) && (in[i+1] == 0x80U) && (in[i+2] == 0x9cU))
+          out += '"', i += 2;
+        // RIGHT DOUBLE QUOTATION MARK (U+201D)
+        if ((in[i] == 0xe2U) && (in[i+1] == 0x80U) && (in[i+2] == 0x9dU))
+          out += '"', i += 2;
         // NARROW NO-BREAK SPACE (U+202F)
         if ((in[i] == 0xe2U) && (in[i+1] == 0x80U) && (in[i+2] == 0xafU))
           out += ' ', i += 2;
@@ -996,8 +1073,8 @@ std::string utils::get_potential_file_path(const std::string &path) {
 
       while (dirs.has_next()) {
         auto pot = utils::path_basename(filepath);
-        auto path = dirs.next();
-        filepath = utils::path_join(path, pot);
+        auto dir = dirs.next();
+        filepath = utils::path_join(dir, pot);
 
         if (utils::file_is_readable(filepath)) {
           return filepath;

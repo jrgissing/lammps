@@ -38,7 +38,7 @@ enum{MANY,SBOND,SANGLE,SDIHEDRAL,SIMPROPER};
 
 /* ---------------------------------------------------------------------- */
 
-CreateBonds::CreateBonds(LAMMPS *lmp) : Pointers(lmp) {}
+CreateBonds::CreateBonds(LAMMPS *lmp) : Command(lmp) {}
 
 /* ---------------------------------------------------------------------- */
 
@@ -310,7 +310,7 @@ void CreateBonds::many()
   // recount bonds
 
   bigint nbonds = 0;
-  for (int i = 0; i < nlocal; i++) nbonds += num_bond[i];
+  for (i = 0; i < nlocal; i++) nbonds += num_bond[i];
 
   MPI_Allreduce(&nbonds,&atom->nbonds,1,MPI_LMP_BIGINT,MPI_SUM,world);
   if (!force->newton_bond) atom->nbonds /= 2;
