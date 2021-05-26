@@ -7,6 +7,11 @@ cmake_minimum_required(VERSION 3.10)
 if(POLICY CMP0074)
   cmake_policy(SET CMP0074 NEW)
 endif()
+# set policy to silence warnings about missing executable permissions in
+# pythonx.y-config when cross-compiling. review occasionally if it may be set to NEW
+if (POLICY CMP0109)
+  cmake_policy(SET CMP0109 OLD)
+endif()
 ########################################
 
 project(lammps CXX)
@@ -86,6 +91,11 @@ set(CMAKE_CXX_STANDARD 11)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 set(CMAKE_CXX_EXTENSIONS OFF CACHE BOOL "Use compiler extensions")
 
+# export all symbols when building a .dll file on windows
+if((CMAKE_SYSTEM_NAME STREQUAL "Windows") AND BUILD_SHARED_LIBS)
+  set(CMAKE_WINDOWS_EXPORT_ALL_SYMBOLS ON)
+endif()
+
 ########################################################################
 # User input options                                                   #
 ########################################################################
@@ -104,11 +114,23 @@ endif()
 option(BUILD_TOOLS "Build and install LAMMPS tools (msi2lmp, binary2txt, chain)" OFF)
 option(BUILD_LAMMPS_SHELL "Build and install the LAMMPS shell" OFF)
 
+# allow enabling clang-tidy for C++ files
+set(ENABLE_CLANG_TIDY OFF CACHE BOOL "Include clang-tidy processing when compiling")
+if(ENABLE_CLANG_TIDY)
+  set(CMAKE_CXX_CLANG_TIDY "clang-tidy;-checks=*-header-filter=.*" CACHE STRING "")
+endif()
+
 include(GNUInstallDirs)
 file(GLOB ALL_SOURCES ${LAMMPS_SOURCE_DIR}/[^.]*.cpp)
 file(GLOB MAIN_SOURCES ${LAMMPS_SOURCE_DIR}/main.cpp)
 list(REMOVE_ITEM ALL_SOURCES ${MAIN_SOURCES})
 add_library(lammps ${ALL_SOURCES})
+
+# tell CMake to export all symbols to a .dll on Windows with MinGW cross-compilers
+if(BUILD_SHARED_LIBS AND (CMAKE_SYSTEM_NAME STREQUAL "Windows") AND CMAKE_CROSSCOMPILING)
+  set_target_properties(lammps PROPERTIES LINK_FLAGS "-Wl,--export-all-symbols")
+endif()
+
 add_executable(lmp ${MAIN_SOURCES})
 target_link_libraries(lmp PRIVATE lammps)
 set_target_properties(lmp PROPERTIES OUTPUT_NAME ${LAMMPS_BINARY})
@@ -121,10 +143,10 @@ set(STANDARD_PACKAGES ASPHERE BODY CLASS2 COLLOID COMPRESS DIPOLE
   PLUGIN QEQ REPLICA RIGID SHOCK SPIN SNAP SRD KIM PYTHON MSCG MPIIO VORONOI
   USER-ADIOS USER-ATC USER-AWPMD USER-BOCS USER-CGDNA USER-MESODPD USER-CGSDK
   USER-COLVARS USER-DIFFRACTION USER-DPD USER-DRUDE USER-EFF USER-FEP USER-H5MD
-  USER-LB USER-MANIFOLD USER-MEAMC USER-MESONT USER-MGPT USER-MISC USER-MOFFF
-  USER-MOLFILE USER-NETCDF USER-PHONON USER-PLUMED USER-PTM USER-QTB
+  USER-HDNNP USER-LB USER-MANIFOLD USER-MDI USER-MEAMC USER-MESONT USER-MGPT USER-MISC
+  USER-MOFFF USER-MOLFILE USER-NETCDF USER-PHONON USER-PLUMED USER-PTM USER-QTB
   USER-REACTION USER-REAXC USER-SCAFACOS USER-SDPD USER-SMD USER-SMTBQ USER-SPH
-  USER-TALLY USER-UEF USER-VTK USER-QUIP USER-QMMM USER-YAFF USER-PACE)
+  USER-TALLY USER-UEF USER-VTK USER-QUIP USER-QMMM USER-YAFF USER-PACE USER-BROWNIAN)
 
 set(SUFFIX_PACKAGES CORESHELL GPU KOKKOS OPT USER-INTEL USER-OMP)
 
@@ -151,6 +173,7 @@ if(NOT CMAKE_CROSSCOMPILING)
   find_package(MPI QUIET)
   option(BUILD_MPI "Build MPI version" ${MPI_FOUND})
 else()
+  set(MPI_CXX_SKIP_MPICXX TRUE)
   option(BUILD_MPI "Build MPI version" OFF)
 endif()
 
@@ -234,6 +257,7 @@ if(BUILD_OMP)
 
   if (((CMAKE_CXX_COMPILER_ID STREQUAL "GNU") AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 9.0)) OR
       (CMAKE_CXX_COMPILER_ID STREQUAL "PGI") OR
+      ((CMAKE_CXX_COMPILER_ID STREQUAL "AppleClang") AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10.0)) OR
       ((CMAKE_CXX_COMPILER_ID STREQUAL "Clang") AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 10.0)) OR
       ((CMAKE_CXX_COMPILER_ID STREQUAL "Intel") AND (CMAKE_CXX_COMPILER_VERSION VERSION_GREATER_EQUAL 19.0)))
     # GCC 9.x and later plus Clang 10.x and later implement strict OpenMP 4.0 semantics for consts.
@@ -324,10 +348,10 @@ else()
   set(CUDA_REQUEST_PIC)
 endif()
 
-foreach(PKG_WITH_INCL KSPACE PYTHON MLIAP VORONOI USER-COLVARS USER-MOLFILE USER-NETCDF USER-PLUMED USER-QMMM
-        USER-QUIP USER-SCAFACOS USER-SMD USER-VTK KIM LATTE MESSAGE MSCG COMPRESS USER-PACE)
+foreach(PKG_WITH_INCL KSPACE PYTHON MLIAP VORONOI USER-COLVARS USER-HDNNP USER-MDI USER-MOLFILE USER-NETCDF USER-PLUMED
+        USER-QMMM USER-QUIP USER-SCAFACOS USER-SMD USER-VTK KIM LATTE MESSAGE MSCG COMPRESS USER-PACE)
   if(PKG_${PKG_WITH_INCL})
-    include(Packages/${PKG_WITH_INCL}) 
+    include(Packages/${PKG_WITH_INCL})
   endif()
 endforeach()
 

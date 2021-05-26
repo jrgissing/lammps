@@ -1,6 +1,7 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   https://lammps.sandia.gov/, Sandia National Laboratories
+   https://www.lammps.org/, Sandia National Laboratories
    Steve Plimpton, sjplimp@sandia.gov
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
@@ -504,7 +505,7 @@ void PairSNAP::read_files(char *coefffilename, char *paramfilename)
 
   // initialize checklist for all required nelements
 
-  int elementflags[nelements];
+  int *elementflags = new int[nelements];
   for (int jelem = 0; jelem < nelements; jelem++)
       elementflags[jelem] = 0;
 
@@ -601,6 +602,7 @@ void PairSNAP::read_files(char *coefffilename, char *paramfilename)
       error->all(FLERR,"Element {} not found in SNAP coefficient "
                                    "file", elements[jelem]);
   }
+  delete[] elementflags;
 
   // set flags for required keywords
 

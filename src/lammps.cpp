@@ -1,6 +1,7 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   https://lammps.sandia.gov/, Sandia National Laboratories
+   https://www.lammps.org/, Sandia National Laboratories
    Steve Plimpton, sjplimp@sandia.gov
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
@@ -1141,6 +1142,7 @@ void _noopt LAMMPS::help()
           "-in none/filename           : read input from file or stdin (default) (-i)\n"
           "-kokkos on/off ...          : turn KOKKOS mode on or off (-k)\n"
           "-log none/filename          : where to send log output (-l)\n"
+          "-mdi '<mdi flags>'          : pass flags to the MolSSI Driver Interface\n"
           "-mpicolor color             : which exe in a multi-exe mpirun cmd (-m)\n"
           "-cite                       : select citation reminder style (-c)\n"
           "-nocite                     : disable citation reminder (-nc)\n"
@@ -1328,6 +1330,7 @@ void LAMMPS::print_config(FILE *fp)
 
   fmt::print(fp,"Accelerator configuration:\n\n{}\n",
              Info::get_accelerator_info());
+  fmt::print(fp,"GPU present: {}\n\n",Info::has_gpu_device() ? "yes" : "no");
 
   fputs("Active compile time flags:\n\n",fp);
   if (Info::has_gzip_support()) fputs("-DLAMMPS_GZIP\n",fp);

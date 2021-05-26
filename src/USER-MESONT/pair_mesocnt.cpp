@@ -1,6 +1,7 @@
+// clang-format off
 /* ----------------------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
-   https://lammps.sandia.gov/, Sandia National Laboratories
+   https://www.lammps.org/, Sandia National Laboratories
    Steve Plimpton, sjplimp@sandia.gov
 
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
@@ -920,20 +921,17 @@ void PairMesoCNT::read_data(FILE *fp, double **data,
   // warn if data was read incompletely, e.g. columns were missing
 
   if (cerror)
-    error->warning(FLERR,fmt::format("{} of {} lines were incomplete or could "
-                                     "not be parsed completely in pair table: {}",
-                                     cerror,ninput*ninput,file));
+    error->warning(FLERR,"{} of {} lines were incomplete or could not be parsed "
+                   "completely in pair table: {}",cerror,ninput*ninput,file);
 
   // warn if spacing between data points is not constant
 
   if (sxerror)
-    error->warning(FLERR,fmt::format("{} spacings in first column were different "
-                                     " from first spacing in pair table: {}",
-                                     sxerror,file));
+    error->warning(FLERR,"{} spacings in first column were different from "
+                   "first spacing in pair table: {}",sxerror,file);
   if (syerror)
-    error->warning(FLERR,fmt::format("{} spacings in second column were different "
-                                     " from first spacing in pair table: {}",
-                                     syerror,file));
+    error->warning(FLERR,"{} spacings in second column were different from "
+                   "first spacing in pair table: {}",syerror,file);
 }
 
 /* ----------------------------------------------------------------------

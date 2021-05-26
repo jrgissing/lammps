@@ -118,6 +118,7 @@ OPT.
    * :doc:`gw/zbl <pair_gw>`
    * :doc:`hbond/dreiding/lj (o) <pair_hbond_dreiding>`
    * :doc:`hbond/dreiding/morse (o) <pair_hbond_dreiding>`
+   * :doc:`hdnnp <pair_hdnnp>`
    * :doc:`ilp/graphene/hbn <pair_ilp_graphene_hbn>`
    * :doc:`kolmogorov/crespi/full <pair_kolmogorov_crespi_full>`
    * :doc:`kolmogorov/crespi/z <pair_kolmogorov_crespi_z>`
@@ -171,7 +172,7 @@ OPT.
    * :doc:`lj/sdk/coul/long (go) <pair_sdk>`
    * :doc:`lj/sdk/coul/msm (o) <pair_sdk>`
    * :doc:`lj/sf/dipole/sf (go) <pair_dipole>`
-   * :doc:`lj/smooth (o) <pair_lj_smooth>`
+   * :doc:`lj/smooth (go) <pair_lj_smooth>`
    * :doc:`lj/smooth/linear (o) <pair_lj_smooth_linear>`
    * :doc:`lj/switch3/coulgauss/long <pair_lj_switch3_coulgauss_long>`
    * :doc:`lj96/cut (go) <pair_lj96>`
