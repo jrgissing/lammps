@@ -26,6 +26,7 @@ class Improper : protected Pointers {
   int allocated;
   int *setflag;
   int writedata;             // 1 if writes coeffs to data file
+  int symmatoms[4];          // symmetry atom(s) of improper style
   double energy;             // accumulated energies
   double virial[6];          // accumulated virial: xx,yy,zz,xy,xz,yz
   double *eatom, **vatom;    // accumulated per-atom energy/virial

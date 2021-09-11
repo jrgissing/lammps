@@ -40,6 +40,11 @@ using namespace MathConst;
 ImproperUmbrella::ImproperUmbrella(LAMMPS *lmp) : Improper(lmp)
 {
   writedata = 1;
+  
+  // the first and fourth atoms in the quadruplet are the atoms of symmetry
+
+  symmatoms[0] = 1;
+  symmatoms[3] = 1;
 }
 
 /* ---------------------------------------------------------------------- */
