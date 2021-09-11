@@ -51,6 +51,9 @@
 #include <map>
 
 #ifdef _WIN32
+#ifndef WIN32_LEAN_AND_MEAN
+#define WIN32_LEAN_AND_MEAN
+#endif
 #define PSAPI_VERSION 1
 #include <windows.h>
 #include <cstdint>
@@ -1356,8 +1359,10 @@ std::string Info::get_openmp_info()
 // Supported OpenMP version corresponds to the release date of the
 // specifications as posted at https://www.openmp.org/specifications/
 
-#if _OPENMP > 201811
-  return "OpenMP newer than version 5.0";
+#if _OPENMP > 202011
+  return "OpenMP newer than version 5.1";
+#elif _OPENMP == 202011
+  return "OpenMP 5.1";
 #elif _OPENMP == 201811
   return "OpenMP 5.0";
 #elif _OPENMP == 201611
