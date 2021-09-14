@@ -50,6 +50,11 @@ class LabelMap : protected Pointers {
    int search(std::string, std::vector<std::string>, int);           // look up type index
    int is_complete(int);                                             // check if all types are assigned
 
+   // infer interaction types from standard bracket format
+
+   int infer_bondtype(int, int);                                     // infer bond type from two atom types
+   int parse_brackets(int, std::string, std::vector<std::string> &); // get strings within sets of brackets
+
    // input/output for atom class label map
 
    void write_data(FILE *);

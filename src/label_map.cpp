@@ -2,12 +2,12 @@
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    https://www.lammps.org/, Sandia National Laboratories
    Steve Plimpton, sjplimp@sandia.gov
-   
+
    Copyright (2003) Sandia Corporation.  Under the terms of Contract
    DE-AC04-94AL85000 with Sandia Corporation, the U.S. Government retains
    certain rights in this software.  This software is distributed under
    the GNU General Public License.
-   
+
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
@@ -263,6 +263,53 @@ int LabelMap::is_complete(int mode)
     for (int i = 0; i < nimpropertypes; i++)
       if (itypelabel[i].empty()) return 0;
 
+  return 1;
+}
+
+/* ----------------------------------------------------------------------
+   infer bond type from two atom types
+   input/output is numeric types, uses type labels internally
+   assumes bond types are of the form '[a][b]' for atom types 'a' and 'b'
+------------------------------------------------------------------------- */
+
+int LabelMap::infer_bondtype(int type1, int type2)
+{
+  // convert numeric atom types to type label
+
+  std::string label1 = typelabel[type1-1];
+  std::string label2 = typelabel[type2-1];
+  if (label1.empty() || label2.empty()) return -1;
+
+  // search for matching bond type label
+
+  int status;
+  std::vector<std::string> btypes(2);
+  for (int i = 0; i < nbondtypes; i++) {
+    status = parse_brackets(2, btypelabel[i], btypes);
+    if (status != -1)
+      if ((label1 == btypes[0] && label2 == btypes[1]) ||
+          (label1 == btypes[1] && label2 == btypes[0])) return i+1;
+  }
+  return -1;
+}
+
+/* ----------------------------------------------------------------------
+   return 'ntypes' number of strings between brackets
+------------------------------------------------------------------------- */
+
+int LabelMap::parse_brackets(int ntypes, std::string label, std::vector<std::string> &types)
+{
+  int lbrac,rbrac,len;
+  size_t npos = std::string::npos;
+
+  for (int i = 0; i < ntypes; i++) {
+    lbrac = label.find("[");
+    rbrac = label.find("]");
+    if (lbrac == npos || rbrac == npos) return -1;
+    len = rbrac - lbrac - 1;
+    types[i] = label.substr(lbrac+1,len);
+    label = label.substr(rbrac+1);
+  }
   return 1;
 }
 
