@@ -294,6 +294,34 @@ int LabelMap::infer_bondtype(int type1, int type2)
 }
 
 /* ----------------------------------------------------------------------
+   infer angle type from three atom types
+   input/output is numeric types, uses type labels internally
+   assumes angle types of the form '[a][b][c]' for atom types 'a', 'b', 'c'
+------------------------------------------------------------------------- */
+
+int LabelMap::infer_angletype(int type1, int type2, int type3)
+{
+  // convert numeric atom types to type label
+
+  std::string label1 = typelabel[type1-1];
+  std::string label2 = typelabel[type2-1];
+  std::string label3 = typelabel[type3-1];
+  if (label1.empty() || label2.empty() || label3.empty()) return -1;
+
+  // search for matching angle type label
+
+  int status;
+  std::vector<std::string> atypes(3);
+  for (int i = 0; i < nangletypes; i++) {
+    status = parse_brackets(3, atypelabel[i], atypes);
+    if (status != -1 && label2 == atypes[1])
+      if ((label1 == atypes[0] && label3 == atypes[2]) ||
+          (label1 == atypes[2] && label3 == atypes[0])) return i+1;
+  }
+  return -1;
+}
+
+/* ----------------------------------------------------------------------
    return 'ntypes' number of strings between brackets
 ------------------------------------------------------------------------- */
 

@@ -53,6 +53,7 @@ class LabelMap : protected Pointers {
    // infer interaction types from standard bracket format
 
    int infer_bondtype(int, int);                                     // infer bond type from two atom types
+   int infer_angletype(int, int, int);                               // infer angle type from three atom types
    int parse_brackets(int, std::string, std::vector<std::string> &); // get strings within sets of brackets
 
    // input/output for atom class label map
