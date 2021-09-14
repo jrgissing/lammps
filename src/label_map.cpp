@@ -14,9 +14,10 @@
 #include "label_map.h"
 
 #include "atom.h"
-#include "force.h"
-#include "memory.h"
 #include "error.h"
+#include "force.h"
+#include "improper.h"
+#include "memory.h"
 
 #include <cstring>
 
@@ -350,6 +351,60 @@ int LabelMap::infer_dihedraltype(int type1, int type2, int type3, int type4)
           label3 == dtypes[2] && label4 == dtypes[3]) ||
           (label4 == dtypes[0] && label3 == dtypes[1] &&
            label2 == dtypes[2] && label1 == dtypes[3])) return i+1;
+  }
+  return -1;
+}
+
+/* ----------------------------------------------------------------------
+   infer improper type from four atom types
+   input/output is numeric types, uses type labels internally
+   assumes improper types of the form '[a][b][c][d]'
+   the symmetry of the improper is encoded in improper.symmatoms
+------------------------------------------------------------------------- */
+
+int LabelMap::infer_impropertype(int type1, int type2, int type3, int type4)
+{
+  // convert numeric atom types to type label
+
+  std::vector<std::string> labels;
+  labels[0] = typelabel[type1-1];
+  labels[1] = typelabel[type2-1];
+  labels[2] = typelabel[type3-1];
+  labels[3] = typelabel[type4-1];
+  for (int i = 0; i < 4; i++)
+    if (labels[i].empty()) return -1;
+
+  // search for matching improper type label
+
+  int status, nlist;
+  std::vector<std::string> itypes(4);
+  std::vector<std::string> list1(4);
+  std::vector<std::string> list2(4);
+  for (int i = 0; i < nimpropertypes; i++) {
+    nlist = 0;
+    status = parse_brackets(4, itypelabel[i], itypes);
+    if (status != -1) {
+      for (int j = 0; j < 4; j++) {
+        if (force->improper->symmatoms[j] == 1) {
+          if (labels[j] != itypes[j]) {
+            status = -1;
+            break;
+          }
+        } else {
+          list1[nlist] = labels[j];
+          list2[nlist++] = itypes[j];
+        }
+      }
+      if (status == -1) continue;
+      std::sort(list1.begin(),list1.end());
+      std::sort(list2.begin(),list2.end());
+      for (int j = 0; j < nlist; j++)
+        if (list1[j] != list2[j]) {
+          status = -1;
+          break;
+        }
+      if (status != -1) return i+1;
+    }
   }
   return -1;
 }
