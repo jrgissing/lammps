@@ -41,10 +41,10 @@
 #include "pair.h"
 #include "pair_hybrid.h"
 #include "respa.h"
-#include "style_nbin.h"
-#include "style_npair.h"
-#include "style_nstencil.h"
-#include "style_ntopo.h"
+#include "style_nbin.h"  // IWYU pragma: keep
+#include "style_npair.h"  // IWYU pragma: keep
+#include "style_nstencil.h"  // IWYU pragma: keep
+#include "style_ntopo.h"  // IWYU pragma: keep
 #include "tokenizer.h"
 #include "update.h"
 
@@ -681,7 +681,7 @@ void Neighbor::init_styles()
 
 #define NBIN_CLASS
 #define NBinStyle(key,Class,bitmasks) nbclass++;
-#include "style_nbin.h"
+#include "style_nbin.h"  // IWYU pragma: keep
 #undef NBinStyle
 #undef NBIN_CLASS
 
@@ -695,7 +695,7 @@ void Neighbor::init_styles()
   binnames[nbclass] = (char *) #key; \
   binclass[nbclass] = &bin_creator<Class>; \
   binmasks[nbclass++] = bitmasks;
-#include "style_nbin.h"
+#include "style_nbin.h"  // IWYU pragma: keep
 #undef NBinStyle
 #undef NBIN_CLASS
 
@@ -705,7 +705,7 @@ void Neighbor::init_styles()
 
 #define NSTENCIL_CLASS
 #define NStencilStyle(key,Class,bitmasks) nsclass++;
-#include "style_nstencil.h"
+#include "style_nstencil.h"  // IWYU pragma: keep
 #undef NStencilStyle
 #undef NSTENCIL_CLASS
 
@@ -719,7 +719,7 @@ void Neighbor::init_styles()
   stencilnames[nsclass] = (char *) #key; \
   stencilclass[nsclass] = &stencil_creator<Class>; \
   stencilmasks[nsclass++] = bitmasks;
-#include "style_nstencil.h"
+#include "style_nstencil.h"  // IWYU pragma: keep
 #undef NStencilStyle
 #undef NSTENCIL_CLASS
 
@@ -729,7 +729,7 @@ void Neighbor::init_styles()
 
 #define NPAIR_CLASS
 #define NPairStyle(key,Class,bitmasks) npclass++;
-#include "style_npair.h"
+#include "style_npair.h"  // IWYU pragma: keep
 #undef NPairStyle
 #undef NPAIR_CLASS
 
@@ -743,7 +743,7 @@ void Neighbor::init_styles()
   pairnames[npclass] = (char *) #key; \
   pairclass[npclass] = &pair_creator<Class>; \
   pairmasks[npclass++] = bitmasks;
-#include "style_npair.h"
+#include "style_npair.h"  // IWYU pragma: keep
 #undef NPairStyle
 #undef NPAIR_CLASS
 }
@@ -915,11 +915,14 @@ int Neighbor::init_pair()
     requests[i]->index_bin = -1;
     flag = lists[i]->bin_method;
     if (flag == 0) continue;
-    for (j = 0; j < nbin; j++)
-      if (neigh_bin[j]->istyle == flag) break;
-    if (j < nbin && !requests[i]->unique) {
-      requests[i]->index_bin = j;
-      continue;
+    if (!requests[i]->unique) {
+      for (j = 0; j < nbin; j++)
+        if (neigh_bin[j]->istyle == flag &&
+            neigh_bin[j]->cutoff_custom == 0.0) break;
+      if (j < nbin) {
+        requests[i]->index_bin = j;
+        continue;
+      }
     }
 
     BinCreator &bin_creator = binclass[flag-1];
@@ -936,11 +939,14 @@ int Neighbor::init_pair()
     requests[i]->index_stencil = -1;
     flag = lists[i]->stencil_method;
     if (flag == 0) continue;
-    for (j = 0; j < nstencil; j++)
-      if (neigh_stencil[j]->istyle == flag) break;
-    if (j < nstencil && !requests[i]->unique) {
-      requests[i]->index_stencil = j;
-      continue;
+    if (!requests[i]->unique) {
+      for (j = 0; j < nstencil; j++)
+        if (neigh_stencil[j]->istyle == flag &&
+            neigh_stencil[j]->cutoff_custom == 0.0) break;
+      if (j < nstencil) {
+        requests[i]->index_stencil = j;
+        continue;
+      }
     }
 
     StencilCreator &stencil_creator = stencilclass[flag-1];
@@ -1887,11 +1893,12 @@ int Neighbor::choose_pair(NeighRequest *rq)
 
   // convert newton request to newtflag = on or off
 
-  int newtflag;
-  if (rq->newton == 0 && newton_pair) newtflag = 1;
-  else if (rq->newton == 0 && !newton_pair) newtflag = 0;
-  else if (rq->newton == 1) newtflag = 1;
-  else if (rq->newton == 2) newtflag = 0;
+  bool newtflag;
+  if (rq->newton == 0 && newton_pair) newtflag = true;
+  else if (rq->newton == 0 && !newton_pair) newtflag = false;
+  else if (rq->newton == 1) newtflag = true;
+  else if (rq->newton == 2) newtflag = false;
+  else error->all(FLERR,"Illegal 'newton' flag in neighbor list request");
 
   int molecular = atom->molecular;
 
@@ -2565,27 +2572,16 @@ void Neighbor::modify_params(int narg, char **arg)
         type2collection[i] = -1;
 
       // For each custom range, define mapping for types in interval
-      int nfield;
-      char *str;
       for (i = 0; i < ncollections; i++){
-        n = strlen(arg[iarg+2+i]) + 1;
-        str = new char[n];
-        strcpy(str,arg[iarg+2+i]);
-        std::vector<std::string> words = Tokenizer(str, ",").as_vector();
-        nfield = words.size();
-
-        for (j = 0; j < nfield; j++) {
-          const char * field = words[j].c_str();
-          utils::bounds(FLERR,field,1,ntypes,nlo,nhi,error);
-
+        std::vector<std::string> words = Tokenizer(arg[iarg+2+i], ",").as_vector();
+        for (const auto &word : words) {
+          utils::bounds(FLERR,word,1,ntypes,nlo,nhi,error);
           for (k = nlo; k <= nhi; k++) {
             if (type2collection[k] != -1)
               error->all(FLERR,"Type specified more than once in collection/type commnd");
             type2collection[k] = i;
           }
         }
-
-        delete [] str;
       }
 
       // Check for undefined atom type
