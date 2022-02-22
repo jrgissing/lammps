@@ -39,11 +39,11 @@
 #include "memory.h"
 #include "potential_file_reader.h"
 #include "respa.h"
-#include "tokenizer.h"
 #include "update.h"
 
 #include <cmath>
 #include <cstring>
+#include <exception>
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
@@ -637,7 +637,7 @@ void FixCMAP::read_grid_map(char *cmapfile)
 {
   if (comm->me == 0) {
     try {
-      memset(&cmapgrid[0][0][0], 6*CMAPDIM*CMAPDIM, sizeof(double));
+      memset(&cmapgrid[0][0][0], 0, 6*CMAPDIM*CMAPDIM*sizeof(double));
       PotentialFileReader reader(lmp, cmapfile, "cmap grid");
 
       // there are six maps in this order.
