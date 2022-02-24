@@ -1,4 +1,3 @@
-// clang-format off
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    https://www.lammps.org/, Sandia National Laboratories
@@ -20,6 +19,7 @@ PairStyle(coul/cut/kk/host,PairCoulCutKokkos<LMPHostType>);
 // clang-format on
 #else
 
+// clang-format off
 #ifndef LMP_PAIR_COUL_CUT_KOKKOS_H
 #define LMP_PAIR_COUL_CUT_KOKKOS_H
 
@@ -37,13 +37,13 @@ class PairCoulCutKokkos : public PairCoulCut {
   typedef DeviceType device_type;
   typedef ArrayTypes<DeviceType> AT;
   PairCoulCutKokkos(class LAMMPS *);
-  ~PairCoulCutKokkos();
+  ~PairCoulCutKokkos() override;
 
-  void compute(int, int);
+  void compute(int, int) override;
 
-  void settings(int, char **);
-  void init_style();
-  double init_one(int, int);
+  void settings(int, char **) override;
+  void init_style() override;
+  double init_one(int, int) override;
 
   struct params_coul{
     KOKKOS_INLINE_FUNCTION
@@ -111,7 +111,7 @@ class PairCoulCutKokkos : public PairCoulCut {
   double special_lj[4];
   double qqrd2e;
 
-  void allocate();
+  void allocate() override;
   friend struct PairComputeFunctor<PairCoulCutKokkos,FULL,true>;
   friend struct PairComputeFunctor<PairCoulCutKokkos,HALF,true>;
   friend struct PairComputeFunctor<PairCoulCutKokkos,HALFTHREAD,true>;

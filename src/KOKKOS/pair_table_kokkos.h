@@ -1,4 +1,3 @@
-// clang-format off
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    https://www.lammps.org/, Sandia National Laboratories
@@ -20,6 +19,7 @@ PairStyle(table/kk/host,PairTableKokkos<LMPHostType>);
 // clang-format on
 #else
 
+// clang-format off
 #ifndef LMP_PAIR_TABLE_KOKKOS_H
 #define LMP_PAIR_TABLE_KOKKOS_H
 
@@ -48,17 +48,17 @@ class PairTableKokkos : public PairTable {
   typedef ArrayTypes<DeviceType> AT;
 
   PairTableKokkos(class LAMMPS *);
-  virtual ~PairTableKokkos();
+  ~PairTableKokkos() override;
 
-  virtual void compute(int, int);
+  void compute(int, int) override;
 
   template<int TABSTYLE>
   void compute_style(int, int);
 
-  void settings(int, char **);
-  double init_one(int, int);
+  void settings(int, char **) override;
+  double init_one(int, int) override;
 
-  void init_style();
+  void init_style() override;
 
 
  protected:
@@ -103,8 +103,8 @@ class PairTableKokkos : public PairTable {
 
   typename AT::t_ffloat_2d d_cutsq;
 
-  virtual void allocate();
-  void compute_table(Table *);
+  void allocate() override;
+  void compute_table(Table *) override;
 
   typename AT::t_x_array_randomread x;
   typename AT::t_x_array_const c_x;

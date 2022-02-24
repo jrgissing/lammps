@@ -1,4 +1,3 @@
-// clang-format off
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    https://www.lammps.org/, Sandia National Laboratories
@@ -20,6 +19,7 @@ PairStyle(lj/cut/coul/long/kk/host,PairLJCutCoulLongKokkos<LMPHostType>);
 // clang-format on
 #else
 
+// clang-format off
 #ifndef LMP_PAIR_LJ_CUT_COUL_LONG_KOKKOS_H
 #define LMP_PAIR_LJ_CUT_COUL_LONG_KOKKOS_H
 
@@ -37,14 +37,14 @@ class PairLJCutCoulLongKokkos : public PairLJCutCoulLong {
   typedef DeviceType device_type;
   typedef ArrayTypes<DeviceType> AT;
   PairLJCutCoulLongKokkos(class LAMMPS *);
-  ~PairLJCutCoulLongKokkos();
+  ~PairLJCutCoulLongKokkos() override;
 
-  void compute(int, int);
+  void compute(int, int) override;
 
-  void settings(int, char **);
-  void init_tables(double cut_coul, double *cut_respa);
-  void init_style();
-  double init_one(int, int);
+  void settings(int, char **) override;
+  void init_tables(double cut_coul, double *cut_respa) override;
+  void init_style() override;
+  double init_one(int, int) override;
 
  protected:
   template<bool STACKPARAMS, class Specialisation>
@@ -106,7 +106,7 @@ class PairLJCutCoulLongKokkos : public PairLJCutCoulLong {
   double special_lj[4];
   double qqrd2e;
 
-  void allocate();
+  void allocate() override;
   friend struct PairComputeFunctor<PairLJCutCoulLongKokkos,FULL,true,CoulLongTable<1> >;
   friend struct PairComputeFunctor<PairLJCutCoulLongKokkos,HALF,true,CoulLongTable<1> >;
   friend struct PairComputeFunctor<PairLJCutCoulLongKokkos,HALFTHREAD,true,CoulLongTable<1> >;

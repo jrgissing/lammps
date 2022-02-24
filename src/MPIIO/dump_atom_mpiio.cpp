@@ -38,7 +38,12 @@ using namespace LAMMPS_NS;
 
 /* ---------------------------------------------------------------------- */
 
-DumpAtomMPIIO::DumpAtomMPIIO(LAMMPS *lmp, int narg, char **arg) : DumpAtom(lmp, narg, arg) {}
+DumpAtomMPIIO::DumpAtomMPIIO(LAMMPS *lmp, int narg, char **arg)
+  : DumpAtom(lmp, narg, arg)
+{
+  if (me == 0)
+    error->warning(FLERR,"MPI-IO output is unmaintained and unreliable. Use with caution.");
+}
 
 /* ---------------------------------------------------------------------- */
 
@@ -114,7 +119,7 @@ void DumpAtomMPIIO::openfile()
 
     mpifo = 0;
 
-    MPI_File_set_size(mpifh, (MPI_Offset)(headerSize + sumFileSize));
+    MPI_File_set_size(mpifh, (MPI_Offset) (headerSize + sumFileSize));
     currentFileSize = (headerSize + sumFileSize);
   }
 }

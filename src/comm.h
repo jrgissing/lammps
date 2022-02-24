@@ -63,7 +63,7 @@ class Comm : protected Pointers {
   // methods
 
   Comm(class LAMMPS *);
-  virtual ~Comm();
+  ~Comm() override;
   // NOTE: copy_arrays is called from a constructor and must not be made virtual
   void copy_arrays(class Comm *);
   virtual void init();
@@ -82,15 +82,15 @@ class Comm : protected Pointers {
 
   // forward/reverse comm from a Pair, Fix, Compute, Dump
 
-  virtual void forward_comm_pair(class Pair *) = 0;
-  virtual void reverse_comm_pair(class Pair *) = 0;
-  virtual void forward_comm_fix(class Fix *, int size = 0) = 0;
-  virtual void reverse_comm_fix(class Fix *, int size = 0) = 0;
-  virtual void reverse_comm_fix_variable(class Fix *) = 0;
-  virtual void forward_comm_compute(class Compute *) = 0;
-  virtual void reverse_comm_compute(class Compute *) = 0;
-  virtual void forward_comm_dump(class Dump *) = 0;
-  virtual void reverse_comm_dump(class Dump *) = 0;
+  virtual void forward_comm(class Pair *) = 0;
+  virtual void reverse_comm(class Pair *) = 0;
+  virtual void forward_comm(class Fix *, int size = 0) = 0;
+  virtual void reverse_comm(class Fix *, int size = 0) = 0;
+  virtual void reverse_comm_variable(class Fix *) = 0;
+  virtual void forward_comm(class Compute *) = 0;
+  virtual void reverse_comm(class Compute *) = 0;
+  virtual void forward_comm(class Dump *) = 0;
+  virtual void reverse_comm(class Dump *) = 0;
 
   // forward comm of an array
   // exchange of info on neigh stencil
@@ -98,12 +98,15 @@ class Comm : protected Pointers {
 
   virtual void forward_comm_array(int, double **) = 0;
   virtual int exchange_variable(int, double *, double *&) = 0;
-  int binary(double, int, double *);
 
   // map a point to a processor, based on current decomposition
 
   virtual void coord2proc_setup() {}
   virtual int coord2proc(double *, int &, int &, int &);
+
+  // partition a global regular grid by proc sub-domains
+
+  void partition_grid(int, int, int, double, int &, int &, int &, int &, int &, int &);
 
   // memory usage
 
@@ -117,6 +120,7 @@ class Comm : protected Pointers {
                  int statflag = 0);
 
   // extract data useful to other classes
+
   virtual void *extract(const char *, int &) { return nullptr; }
 
  protected:

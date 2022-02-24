@@ -113,6 +113,7 @@ class Fix : protected Pointers {
 
   double virial[6];          // virial for this timestep
   double *eatom, **vatom;    // per-atom energy/virial for this timestep
+  double **cvatom;           // per-atom centroid virial for this timestep
 
   int centroidstressflag;    // centroid stress compared to two-body stress
                              // CENTROID_SAME = same as two-body stress
@@ -129,7 +130,7 @@ class Fix : protected Pointers {
   unsigned int datamask_read, datamask_modify;
 
   Fix(class LAMMPS *, int, char **);
-  virtual ~Fix();
+  ~Fix() override;
   void modify_params(int, char **);
 
   virtual int setmask() = 0;
@@ -205,6 +206,13 @@ class Fix : protected Pointers {
   virtual int pack_reverse_comm(int, int, double *) { return 0; }
   virtual void unpack_reverse_comm(int, int *, double *) {}
 
+  virtual void pack_forward_grid(int, void *, int, int *){};
+  virtual void unpack_forward_grid(int, void *, int, int *){};
+  virtual void pack_reverse_grid(int, void *, int, int *){};
+  virtual void unpack_reverse_grid(int, void *, int, int *){};
+  virtual void pack_gather_grid(int, void *){};
+  virtual void unpack_gather_grid(int, void *, void *, int, int, int, int, int, int){};
+
   virtual double compute_scalar() { return 0.0; }
   virtual double compute_vector(int) { return 0.0; }
   virtual double compute_array(int, int) { return 0.0; }
@@ -242,8 +250,8 @@ class Fix : protected Pointers {
 
   int evflag;
   int eflag_either, eflag_global, eflag_atom;
-  int vflag_either, vflag_global, vflag_atom;
-  int maxeatom, maxvatom;
+  int vflag_either, vflag_global, vflag_atom, cvflag_atom;
+  int maxeatom, maxvatom, maxcvatom;
 
   int copymode;    // if set, do not deallocate during destruction
                    // required when classes are used as functors by Kokkos
@@ -256,7 +264,7 @@ class Fix : protected Pointers {
       ev_setup(eflag, vflag);
     else
       evflag = eflag_either = eflag_global = eflag_atom = vflag_either = vflag_global = vflag_atom =
-          0;
+          cvflag_atom = 0;
   }
   void ev_setup(int, int);
   void ev_tally(int, int *, double, double, double *);
@@ -266,10 +274,12 @@ class Fix : protected Pointers {
     if (vflag && thermo_virial)
       v_setup(vflag);
     else
-      evflag = vflag_either = vflag_global = vflag_atom = 0;
+      evflag = vflag_either = vflag_global = vflag_atom = cvflag_atom = 0;
   }
   void v_setup(int);
   void v_tally(int, int *, double, double *);
+  void v_tally(int,int*,double,double*,int,int,int[][2],double*,double[][3]);
+  void v_tally(int,int*,double,double*,double[][3],double[][3],double[]);
   void v_tally(int, double *);
   void v_tally(int, int, double);
 };

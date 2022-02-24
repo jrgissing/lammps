@@ -32,16 +32,15 @@ namespace LAMMPS_NS {
 class FixNVTSllodIntel : public FixNHIntel {
  public:
   FixNVTSllodIntel(class LAMMPS *, int, char **);
-  ~FixNVTSllodIntel() {}
-  void init();
+  void init() override;
 
  private:
   int nondeformbias;
 
-  void nh_v_temp();
+  void nh_v_temp() override;
 };
 
-}
+}    // namespace LAMMPS_NS
 
 #endif
 #endif
@@ -70,4 +69,3 @@ E: Using fix nvt/sllod with no fix deform defined
 Self-explanatory.
 
 */
-

@@ -1,4 +1,3 @@
-// clang-format off
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    https://www.lammps.org/, Sandia National Laboratories
@@ -86,6 +85,7 @@ NPairStyle(half/size/bin/kk/device,
 // clang-format on
 #else
 
+// clang-format off
 #ifndef LMP_NPAIR_KOKKOS_H
 #define LMP_NPAIR_KOKKOS_H
 
@@ -100,11 +100,10 @@ class NPairKokkos : public NPair {
 
  public:
   NPairKokkos(class LAMMPS *);
-  ~NPairKokkos() {}
-  void copy_neighbor_info();
-  void copy_bin_info();
-  void copy_stencil_info();
-  void build(class NeighList *);
+  void copy_neighbor_info() override;
+  void copy_bin_info() override;
+  void copy_stencil_info() override;
+  void build(class NeighList *) override;
 
  private:
   int newton_pair;

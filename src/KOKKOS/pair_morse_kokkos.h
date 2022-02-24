@@ -1,4 +1,3 @@
-// clang-format off
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    https://www.lammps.org/, Sandia National Laboratories
@@ -20,6 +19,7 @@ PairStyle(morse/kk/host,PairMorseKokkos<LMPHostType>);
 // clang-format on
 #else
 
+// clang-format off
 #ifndef LMP_PAIR_MORSE_KOKKOS_H
 #define LMP_PAIR_MORSE_KOKKOS_H
 
@@ -36,13 +36,13 @@ class PairMorseKokkos : public PairMorse {
   enum {COUL_FLAG=0};
   typedef DeviceType device_type;
   PairMorseKokkos(class LAMMPS *);
-  virtual ~PairMorseKokkos();
+  ~PairMorseKokkos() override;
 
-  void compute(int, int);
+  void compute(int, int) override;
 
-  void settings(int, char **);
-  void init_style();
-  double init_one(int, int);
+  void settings(int, char **) override;
+  void init_style() override;
+  double init_one(int, int) override;
 
   struct params_morse{
     KOKKOS_INLINE_FUNCTION
@@ -92,7 +92,7 @@ class PairMorseKokkos : public PairMorse {
   int neighflag;
   int nlocal,nall,eflag,vflag;
 
-  void allocate();
+  void allocate() override;
   friend struct PairComputeFunctor<PairMorseKokkos,FULL,true>;
   friend struct PairComputeFunctor<PairMorseKokkos,HALF,true>;
   friend struct PairComputeFunctor<PairMorseKokkos,HALFTHREAD,true>;

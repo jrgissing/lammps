@@ -1,4 +1,3 @@
-// clang-format off
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    https://www.lammps.org/, Sandia National Laboratories
@@ -20,6 +19,7 @@ FixStyle(dpd/energy/kk/host,FixDPDenergyKokkos<LMPHostType>);
 // clang-format on
 #else
 
+// clang-format off
 #ifndef LMP_FIX_DPDE_KOKKOS_H
 #define LMP_FIX_DPDE_KOKKOS_H
 
@@ -32,9 +32,9 @@ template <class DeviceType>
 class FixDPDenergyKokkos : public FixDPDenergy {
  public:
   FixDPDenergyKokkos(class LAMMPS *, int, char **);
-  virtual ~FixDPDenergyKokkos() {}
-  virtual void initial_integrate(int);
-  virtual void final_integrate();
+
+  void initial_integrate(int) override;
+  void final_integrate() override;
 
   void take_half_step();
  protected:
