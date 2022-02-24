@@ -33,7 +33,6 @@
 #include "neighbor.h"
 #include "potential_file_reader.h"
 #include "tabular_function.h"
-#include "tokenizer.h"
 
 #include <cmath>
 
@@ -593,7 +592,7 @@ void PairPolymorphic::read_file(char *file)
 
         if ((ng == 0) || (nr == 0) || (nx == 0))
           error->one(FLERR,"Error reading potential file header");
-      } catch (TokenizerException &e) {
+      } catch (TokenizerException &) {
         error->one(FLERR,"Potential file incompatible with this pair style version");
       }
 

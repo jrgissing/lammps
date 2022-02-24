@@ -11,6 +11,7 @@ of time and requests from the LAMMPS user community.
    :maxdepth: 1
 
    Developer_org
+   Developer_cxx_vs_c_style
    Developer_parallel
    Developer_flow
    Developer_write
@@ -18,4 +19,5 @@ of time and requests from the LAMMPS user community.
    Developer_plugins
    Developer_unittest
    Classes
+   Developer_platform
    Developer_utils

@@ -36,10 +36,10 @@
 #include "neigh_request.h"
 #include "neighbor.h"
 #include "update.h"
+#include "fix_acks2_reaxff.h"
 
 #include <cmath>
 #include <cstring>
-#include <strings.h>    // for strcasecmp()
 
 #include "reaxff_api.h"
 
@@ -90,7 +90,6 @@ PairReaxFF::PairReaxFF(LAMMPS *lmp) : Pair(lmp)
   api->system->num_nbrs = 0;
   api->system->n = 0;                // my atoms
   api->system->N = 0;                // mine + ghosts
-  api->system->bigN = 0;             // all atoms in the system
   api->system->local_cap = 0;
   api->system->total_cap = 0;
   api->system->my_atoms = nullptr;
@@ -155,6 +154,7 @@ PairReaxFF::~PairReaxFF()
     delete [] chi;
     delete [] eta;
     delete [] gamma;
+    delete [] bcut_acks2;
   }
 
   memory->destroy(tmpid);
@@ -179,6 +179,7 @@ void PairReaxFF::allocate()
   chi = new double[n+1];
   eta = new double[n+1];
   gamma = new double[n+1];
+  bcut_acks2 = new double[n+1];
 }
 
 /* ---------------------------------------------------------------------- */
@@ -299,7 +300,7 @@ void PairReaxFF::coeff(int nargs, char **args)
   // pair_coeff element map
   for (int i = 3; i < nargs; i++)
     for (int j = 0; j < nreax_types; j++)
-      if (strcasecmp(args[i],api->system->reax_param.sbp[j].name) == 0) {
+      if (utils::lowercase(args[i]) == utils::lowercase(api->system->reax_param.sbp[j].name)) {
         map[i-2] = j;
         itmp ++;
       }
@@ -330,28 +331,28 @@ void PairReaxFF::coeff(int nargs, char **args)
 
 void PairReaxFF::init_style()
 {
-  if (!atom->q_flag)
-    error->all(FLERR,"Pair style reaxff requires atom attribute q");
+  if (!atom->q_flag) error->all(FLERR,"Pair style reaxff requires atom attribute q");
 
-  bool have_qeq = ((modify->find_fix_by_style("^qeq/reax") != -1)
-                   || (modify->find_fix_by_style("^qeq/shielded") != -1));
-  if (!have_qeq && qeqflag == 1)
-    error->all(FLERR,"Pair reaxff requires use of fix qeq/reaxff or qeq/shielded");
+  auto acks2_fixes = modify->get_fix_by_style("^acks2/reax");
+  int have_qeq = modify->get_fix_by_style("^qeq/reax").size()
+    + modify->get_fix_by_style("^qeq/shielded").size() + acks2_fixes.size();
+
+  if (qeqflag && (have_qeq != 1))
+    error->all(FLERR,"Pair style reaxff requires use of exactly one of the "
+               "fix qeq/reaxff or fix qeq/shielded or fix acks2/reaxff commands");
+
+  api->system->acks2_flag = acks2_fixes.size();
+  if (api->system->acks2_flag)
+    api->workspace->s = ((FixACKS2ReaxFF *)acks2_fixes.front())->get_s();
 
   api->system->n = atom->nlocal; // my atoms
   api->system->N = atom->nlocal + atom->nghost; // mine + ghosts
-  api->system->bigN = static_cast<int> (atom->natoms);  // all atoms in the system
   api->system->wsize = comm->nprocs;
 
   if (atom->tag_enable == 0)
     error->all(FLERR,"Pair style reaxff requires atom IDs");
   if (force->newton_pair == 0)
     error->all(FLERR,"Pair style reaxff requires newton pair on");
-
-  // because system->bigN is an int, we cannot have more atoms than MAXSMALLINT
-
-  if (atom->natoms > MAXSMALLINT)
-    error->all(FLERR,"Too many atoms for pair style reaxff");
 
   // need a half neighbor list w/ Newton off and ghost neighbors
   // built whenever re-neighboring occurs
@@ -380,7 +381,6 @@ void PairReaxFF::setup()
   api->system->n = atom->nlocal; // my atoms
   api->system->N = atom->nlocal + atom->nghost; // mine + ghosts
   oldN = api->system->N;
-  api->system->bigN = static_cast<int> (atom->natoms);  // all atoms in the system
 
   if (setup_flag == 0) {
 
@@ -447,8 +447,6 @@ double PairReaxFF::init_one(int i, int j)
 
 void PairReaxFF::compute(int eflag, int vflag)
 {
-  double evdwl,ecoul;
-
   // communicate num_bonds once every reneighboring
   // 2 num arrays stored by fix, grab ptr to them
 
@@ -456,12 +454,15 @@ void PairReaxFF::compute(int eflag, int vflag)
   int *num_bonds = fix_reaxff->num_bonds;
   int *num_hbonds = fix_reaxff->num_hbonds;
 
-  evdwl = ecoul = 0.0;
   ev_init(eflag,vflag);
 
   api->system->n = atom->nlocal; // my atoms
   api->system->N = atom->nlocal + atom->nghost; // mine + ghosts
-  api->system->bigN = static_cast<int> (atom->natoms);  // all atoms in the system
+
+  if (api->system->acks2_flag) {
+    auto ifix = modify->get_fix_by_style("^acks2/reax").front();
+    api->workspace->s = ((FixACKS2ReaxFF*) ifix)->get_s();
+  }
 
   // setup data structures
 
@@ -483,20 +484,6 @@ void PairReaxFF::compute(int eflag, int vflag)
   // energies and pressure
 
   if (eflag_global) {
-    evdwl += api->data->my_en.e_bond;
-    evdwl += api->data->my_en.e_ov;
-    evdwl += api->data->my_en.e_un;
-    evdwl += api->data->my_en.e_lp;
-    evdwl += api->data->my_en.e_ang;
-    evdwl += api->data->my_en.e_pen;
-    evdwl += api->data->my_en.e_coa;
-    evdwl += api->data->my_en.e_hb;
-    evdwl += api->data->my_en.e_tor;
-    evdwl += api->data->my_en.e_con;
-    evdwl += api->data->my_en.e_vdW;
-
-    ecoul += api->data->my_en.e_ele;
-    ecoul += api->data->my_en.e_pol;
 
     // Store the different parts of the energy
     // in a list for output by compute pair command
@@ -728,6 +715,16 @@ void *PairReaxFF::extract(const char *str, int &dim)
       if (map[i] >= 0) gamma[i] = api->system->reax_param.sbp[map[i]].gamma;
       else gamma[i] = 0.0;
     return (void *) gamma;
+   }
+   if (strcmp(str,"bcut_acks2") == 0 && bcut_acks2) {
+    for (int i = 1; i <= atom->ntypes; i++)
+      if (map[i] >= 0) bcut_acks2[i] = api->system->reax_param.sbp[map[i]].bcut_acks2;
+      else bcut_acks2[i] = 0.0;
+    return (void *) bcut_acks2;
+  }
+  if (strcmp(str,"bond_softness") == 0) {
+      double* bond_softness = &api->system->reax_param.gp.l[34];
+    return (void *) bond_softness;
   }
   return nullptr;
 }
