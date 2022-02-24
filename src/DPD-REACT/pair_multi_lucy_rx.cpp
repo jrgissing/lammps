@@ -496,7 +496,7 @@ void PairMultiLucyRX::read_table(Table *tb, char *file, char *keyword)
 
   // loop until section found with matching keyword
 
-  while (1) {
+  while (true) {
     if (fgets(line,MAXLINE,fp) == nullptr)
       error->one(FLERR,"Did not find keyword in table file");
     if (strspn(line," \t\n\r") == strlen(line)) continue;  // blank line
@@ -934,9 +934,9 @@ void PairMultiLucyRX::computeLocalDensity()
 
     rho[i] = rho_i;
   }
-  if (newton_pair) comm->reverse_comm_pair(this);
+  if (newton_pair) comm->reverse_comm(this);
 
-  comm->forward_comm_pair(this);
+  comm->forward_comm(this);
 
 }
 

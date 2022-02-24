@@ -27,7 +27,7 @@ namespace LAMMPS_NS {
 class DumpCustom : public Dump {
  public:
   DumpCustom(class LAMMPS *, int, char **);
-  virtual ~DumpCustom();
+  ~DumpCustom() override;
 
   const char *MAGIC_STRING = "DUMPCUSTOM";
   const int FORMAT_REVISION = 0x0002;
@@ -38,79 +38,79 @@ class DumpCustom : public Dump {
   int iregion;       // -1 if no region, else which region
   char *idregion;    // region ID
 
-  int nthresh;        // # of defined thresholds
-  int nthreshlast;    // # of defined thresholds with value = LAST
-
-  int *thresh_array;       // array to threshold on for each nthresh
-  int *thresh_op;          // threshold operation for each nthresh
-  double *thresh_value;    // threshold value for each nthresh
-  int *thresh_last;        // for threshold value = LAST,
-                           // index into thresh_fix
-                           // -1 if not LAST, value is numeric
-
+  int nthresh;                    // # of defined thresholds
+  int nthreshlast;                // # of defined thresholds with value = LAST
+                                  //
+  int *thresh_array;              // array to threshold on for each nthresh
+  int *thresh_op;                 // threshold operation for each nthresh
+  double *thresh_value;           // threshold value for each nthresh
+  int *thresh_last;               // for threshold value = LAST,
+                                  // index into thresh_fix
+                                  // -1 if not LAST, value is numeric
+                                  //
   class FixStore **thresh_fix;    // stores values for each threshold LAST
   char **thresh_fixID;            // IDs of thresh_fixes
   int *thresh_first;              // 1 the first time a FixStore values accessed
 
-  int expand;     // flag for whether field args were expanded
-  char **earg;    // field names with wildcard expansion
-  int nargnew;    // size of earg
-
-  int *vtype;        // type of each vector (INT, DOUBLE)
-  char **vformat;    // format string for each vector element
-
-  char *columns;    // column labels
-
+  int expand;         // flag for whether field args were expanded
+  char **earg;        // field names with wildcard expansion
+  int nargnew;        // size of earg
+                      //
+  int *vtype;         // type of each vector (INT, DOUBLE)
+  char **vformat;     // format string for each vector element
+                      //
+  char *columns;      // column labels
+                      //
   int nchoose;        // # of selected atoms
   int maxlocal;       // size of atom selection and variable arrays
   int *choose;        // local indices of selected atoms
   double *dchoose;    // value for each atom to threshold against
   int *clist;         // compressed list of indices of selected atoms
 
-  int nfield;       // # of keywords listed by user
-  int ioptional;    // index of start of optional args
-
-  int *field2index;     // which compute,fix,variable,custom calcs this field
-  int *argindex;        // index into compute,fix,custom per-atom data
-                        // 0 for per-atom vector, 1-N for cols of per-atom array
-
-  int ncompute;              // # of Computes accessed by dump
-  char **id_compute;         // their IDs
-  class Compute **compute;   // list of ptrs to the Computes
-
-  int nfix;                  // # of Fixes used by dump
-  char **id_fix;             // their IDs
-  class Fix **fix;           // list of ptrs to the Fixes
-
-  int nvariable;             // # of Variables used by dump
-  char **id_variable;        // their names
-  int *variable;             // list of Variable indices in Variable class
-  double **vbuf;             // local storage for variable evaluation
-
-  int ncustom;               // # of Custom atom properties used by dump
-  char **id_custom;          // their names
-  int *custom;               // list of Custom indices in Atom class
-  int *custom_flag;          // list of IVEC,DVEC,IARRAY,DARRAY styles
-
-  int ntypes;                // # of atom types
-  char **typenames;          // array of element names for each type
+  int nfield;                 // # of keywords listed by user
+  int ioptional;              // index of start of optional args
+                              //
+  int *field2index;           // which compute,fix,variable,custom calcs this field
+  int *argindex;              // index into compute,fix,custom per-atom data
+                              // 0 for per-atom vector, 1-N for cols of per-atom array
+                              //
+  int ncompute;               // # of Computes accessed by dump
+  char **id_compute;          // their IDs
+  class Compute **compute;    // list of ptrs to the Computes
+                              //
+  int nfix;                   // # of Fixes used by dump
+  char **id_fix;              // their IDs
+  class Fix **fix;            // list of ptrs to the Fixes
+                              //
+  int nvariable;              // # of Variables used by dump
+  char **id_variable;         // their names
+  int *variable;              // list of Variable indices in Variable class
+  double **vbuf;              // local storage for variable evaluation
+                              //
+  int ncustom;                // # of Custom atom properties used by dump
+  char **id_custom;           // their names
+  int *custom;                // list of Custom indices in Atom class
+  int *custom_flag;           // list of IVEC,DVEC,IARRAY,DARRAY styles
+                              //
+  int ntypes;                 // # of atom types
+  char **typenames;           // array of element names for each type
 
   // private methods
 
-  virtual void init_style();
-  virtual void write_header(bigint);
-  int count();
-  void pack(tagint *);
-  virtual int convert_string(int, double *);
-  virtual void write_data(int, double *);
-  double memory_usage();
+  void init_style() override;
+  void write_header(bigint) override;
+  int count() override;
+  void pack(tagint *) override;
+  int convert_string(int, double *) override;
+  void write_data(int, double *) override;
+  double memory_usage() override;
 
   int parse_fields(int, char **);
   int add_compute(const char *);
   int add_fix(const char *);
   int add_variable(const char *);
   int add_custom(const char *, int);
-  virtual int modify_param(int, char **);
+  int modify_param(int, char **) override;
 
   void header_format_binary();
   void header_unit_style_binary();

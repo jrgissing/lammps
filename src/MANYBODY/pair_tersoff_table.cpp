@@ -32,7 +32,6 @@
 #include "neigh_request.h"
 #include "neighbor.h"
 #include "potential_file_reader.h"
-#include "tokenizer.h"
 
 #include <cmath>
 #include <cstring>
@@ -296,7 +295,6 @@ void PairTersoffTable::compute(int eflag, int vflag)
         k &= NEIGHMASK;
         ktype = map[type[k]];
         ikparam = elem3param[itype][ktype][ktype];
-        ijkparam = elem3param[itype][jtype][ktype];
 
         dr_ik[0] = xtmp -x[k][0];
         dr_ik[1] = ytmp -x[k][1];
@@ -321,7 +319,6 @@ void PairTersoffTable::compute(int eflag, int vflag)
         k &= NEIGHMASK;
         ktype = map[type[k]];
         ikparam = elem3param[itype][ktype][ktype];
-        ijkparam = elem3param[itype][jtype][ktype];
 
         dr_ik[0] = xtmp -x[k][0];
         dr_ik[1] = ytmp -x[k][1];
@@ -380,7 +377,6 @@ void PairTersoffTable::compute(int eflag, int vflag)
         k &= NEIGHMASK;
         ktype = map[type[k]];
         ikparam = elem3param[itype][ktype][ktype];
-        ijkparam = elem3param[itype][jtype][ktype];
 
         dr_ik[0] = xtmp -x[k][0];
         dr_ik[1] = ytmp -x[k][1];
@@ -442,7 +438,6 @@ void PairTersoffTable::compute(int eflag, int vflag)
         k &= NEIGHMASK;
         ktype = map[type[k]];
         ikparam = elem3param[itype][ktype][ktype];
-        ijkparam = elem3param[itype][jtype][ktype];
 
         dr_ik[0] = xtmp -x[k][0];
         dr_ik[1] = ytmp -x[k][1];
@@ -506,7 +501,7 @@ void PairTersoffTable::compute(int eflag, int vflag)
 
 /* ---------------------------------------------------------------------- */
 
-void PairTersoffTable::deallocatePreLoops(void)
+void PairTersoffTable::deallocatePreLoops()
 {
     memory->destroy(preGtetaFunction);
     memory->destroy(preGtetaFunctionDerived);
@@ -514,7 +509,7 @@ void PairTersoffTable::deallocatePreLoops(void)
     memory->destroy(preCutoffFunctionDerived);
 }
 
-void PairTersoffTable::allocatePreLoops(void)
+void PairTersoffTable::allocatePreLoops()
 {
   deallocatePreLoops();
   memory->create(preGtetaFunction,leadingDimensionInteractionList,
@@ -538,7 +533,7 @@ void PairTersoffTable::deallocateGrids()
   memory->destroy(betaZetaPowerDerived);
 }
 
-void PairTersoffTable::allocateGrids(void)
+void PairTersoffTable::allocateGrids()
 {
   int   i, j, k, l;
 
@@ -583,7 +578,6 @@ void PairTersoffTable::allocateGrids(void)
   memory->create(gtetaFunction,nelements,numGridPointsGtetaFunction,"tersofftable:gtetaFunction");
   memory->create(gtetaFunctionDerived,nelements,numGridPointsGtetaFunction,"tersofftable:gtetaFunctionDerived");
 
-  r = minArgumentExponential;
   for (i=0; i<nelements; i++) {
     r = -1.0;
     deltaArgumentGtetaFunction = 1.0 / GRIDDENSITY_GTETA;

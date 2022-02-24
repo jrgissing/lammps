@@ -43,7 +43,7 @@ elif (test $mode = 0) then
   fi
 fi
 
-# list of files with optional dependcies
+# list of files with optional dependencies
 
 action angle_charmm_kokkos.cpp angle_charmm.cpp
 action angle_charmm_kokkos.h angle_charmm.h
@@ -88,12 +88,16 @@ action comm_kokkos.cpp
 action comm_kokkos.h
 action comm_tiled_kokkos.cpp
 action comm_tiled_kokkos.h
+action compute_ave_sphere_atom_kokkos.cpp compute_ave_sphere_atom.cpp
+action compute_ave_sphere_atom_kokkos.h compute_ave_sphere_atom.h
 action compute_coord_atom_kokkos.cpp
 action compute_coord_atom_kokkos.h
 action compute_orientorder_atom_kokkos.cpp
 action compute_orientorder_atom_kokkos.h
 action compute_temp_kokkos.cpp
 action compute_temp_kokkos.h
+action compute_temp_deform_kokkos.cpp
+action compute_temp_deform_kokkos.h
 action dihedral_charmm_kokkos.cpp dihedral_charmm.cpp
 action dihedral_charmm_kokkos.h dihedral_charmm.h
 action dihedral_class2_kokkos.cpp dihedral_class2.cpp
@@ -104,9 +108,13 @@ action dihedral_opls_kokkos.cpp dihedral_opls.cpp
 action dihedral_opls_kokkos.h dihedral_opls.h
 action domain_kokkos.cpp
 action domain_kokkos.h
+action dynamical_matrix_kokkos.cpp dynamical_matrix.cpp
+action dynamical_matrix_kokkos.h dynamical_matrix.h
 action fftdata_kokkos.h fft3d.h
 action fft3d_kokkos.cpp fft3d.cpp
 action fft3d_kokkos.h fft3d.h
+action fix_acks2_reaxff_kokkos.cpp fix_acks2_reaxff.cpp
+action fix_acks2_reaxff_kokkos.h fix_acks2_reaxff.h
 action fix_deform_kokkos.cpp
 action fix_deform_kokkos.h
 action fix_enforce2d_kokkos.cpp
@@ -135,6 +143,8 @@ action fix_nve_sphere_kokkos.cpp
 action fix_nve_sphere_kokkos.h
 action fix_nvt_kokkos.cpp
 action fix_nvt_kokkos.h
+action fix_nvt_sllod_kokkos.cpp
+action fix_nvt_sllod_kokkos.h
 action fix_property_atom_kokkos.cpp
 action fix_property_atom_kokkos.h
 action fix_qeq_reaxff_kokkos.cpp fix_qeq_reaxff.cpp
@@ -159,8 +169,8 @@ action fix_dpd_energy_kokkos.cpp fix_dpd_energy.cpp
 action fix_dpd_energy_kokkos.h fix_dpd_energy.h
 action fix_rx_kokkos.cpp fix_rx.cpp
 action fix_rx_kokkos.h fix_rx.h
-action gridcomm_kokkos.cpp gridcomm.cpp
-action gridcomm_kokkos.h gridcomm.h
+action gridcomm_kokkos.cpp fft3d.h
+action gridcomm_kokkos.h fft3d.h
 action improper_class2_kokkos.cpp improper_class2.cpp
 action improper_class2_kokkos.h improper_class2.h
 action improper_harmonic_kokkos.cpp improper_harmonic.cpp
@@ -304,6 +314,8 @@ action remap_kokkos.cpp remap.cpp
 action remap_kokkos.h remap.h
 action sna_kokkos.h sna.h
 action sna_kokkos_impl.h sna.cpp
+action third_order_kokkos.cpp dynamical_matrix.cpp
+action third_order_kokkos.h dynamical_matrix.h
 action verlet_kokkos.cpp
 action verlet_kokkos.h
 

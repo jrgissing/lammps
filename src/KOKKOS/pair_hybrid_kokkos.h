@@ -1,4 +1,3 @@
-// clang-format off
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    https://www.lammps.org/, Sandia National Laboratories
@@ -18,6 +17,7 @@ PairStyle(hybrid/kk,PairHybridKokkos);
 // clang-format on
 #else
 
+// clang-format off
 #ifndef LMP_PAIR_HYBRID_KOKKOS_H
 #define LMP_PAIR_HYBRID_KOKKOS_H
 
@@ -38,8 +38,8 @@ class PairHybridKokkos : public PairHybrid {
   typedef LMPDeviceType device_type;
 
   PairHybridKokkos(class LAMMPS *);
-  virtual ~PairHybridKokkos();
-  void compute(int, int);
+  ~PairHybridKokkos() override;
+  void compute(int, int) override;
 
  private:
   DAT::t_x_array_randomread x;

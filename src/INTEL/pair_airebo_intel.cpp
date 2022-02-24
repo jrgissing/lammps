@@ -21,6 +21,7 @@
 #include "atom.h"
 #include "comm.h"
 #include "error.h"
+#include "force.h"
 #include "math_const.h"
 #include "memory.h"
 #include "modify.h"
@@ -241,17 +242,17 @@ PairAIREBOIntelParam<flt_t,acc_t> PairAIREBOIntel::get_param()
   PairAIREBOIntelParam<flt_t,acc_t> fc;
 
 #define A(a)                                                           \
-  for (int i = 0; i < sizeof(this->a)/sizeof(double); i++) {           \
+  for (size_t i = 0; i < sizeof(this->a)/sizeof(double); i++) {        \
     reinterpret_cast<flt_t*>(&fc.a)[i] =                               \
       reinterpret_cast<double*>(&this->a)[i];                          \
   }
 #define A0(a)                                                           \
-  for (int i = 0; i < sizeof(fc.a)/sizeof(flt_t); i++) {                \
+  for (size_t i = 0; i < sizeof(fc.a)/sizeof(flt_t); i++) {             \
     reinterpret_cast<flt_t*>(&fc.a)[i] =                                \
       reinterpret_cast<double*>(this->a[0])[i];                         \
   }
 #define B(a)                                                            \
-  for (int i = 0; i < sizeof(this->a)/sizeof(double); i++) {            \
+  for (size_t i = 0; i < sizeof(this->a)/sizeof(double); i++) {         \
     reinterpret_cast<acc_t*>(&fc.a)[i] =                                \
       reinterpret_cast<double*>(&this->a)[i];                           \
   }

@@ -53,7 +53,12 @@ enum{ LT, LE, GT, GE, EQ, NEQ };
 // clang-format on
 /* ---------------------------------------------------------------------- */
 
-DumpCustomMPIIO::DumpCustomMPIIO(LAMMPS *lmp, int narg, char **arg) : DumpCustom(lmp, narg, arg) {}
+DumpCustomMPIIO::DumpCustomMPIIO(LAMMPS *lmp, int narg, char **arg)
+  : DumpCustom(lmp, narg, arg)
+{
+  if (me == 0)
+    error->warning(FLERR,"MPI-IO output is unmaintained and unreliable. Use with caution.");
+}
 
 /* ---------------------------------------------------------------------- */
 
@@ -129,7 +134,7 @@ void DumpCustomMPIIO::openfile()
 
     mpifo = 0;
 
-    MPI_File_set_size(mpifh, (MPI_Offset)(headerSize + sumFileSize));
+    MPI_File_set_size(mpifh, (MPI_Offset) (headerSize + sumFileSize));
     currentFileSize = (headerSize + sumFileSize);
   }
 }

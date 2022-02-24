@@ -1,4 +1,3 @@
-// clang-format off
 /* -*- c++ -*- ----------------------------------------------------------
    LAMMPS - Large-scale Atomic/Molecular Massively Parallel Simulator
    https://www.lammps.org/, Sandia National Laboratories
@@ -20,6 +19,7 @@ FixStyle(eos/table/rx/kk/host,FixEOStableRXKokkos<LMPHostType>);
 // clang-format on
 #else
 
+// clang-format off
 #ifndef LMP_FIX_EOS_TABLE_RX_KOKKOS_H
 #define LMP_FIX_EOS_TABLE_RX_KOKKOS_H
 
@@ -41,11 +41,11 @@ class FixEOStableRXKokkos : public FixEOStableRX {
   typedef EV_FLOAT value_type;
 
   FixEOStableRXKokkos(class LAMMPS *, int, char **);
-  virtual ~FixEOStableRXKokkos();
-  void setup(int);
-  void init();
-  void post_integrate();
-  void end_of_step();
+  ~FixEOStableRXKokkos() override;
+  void setup(int) override;
+  void init() override;
+  void post_integrate() override;
+  void end_of_step() override;
 
   KOKKOS_INLINE_FUNCTION
   void operator()(TagFixEOStableRXInit, const int&) const;
@@ -123,10 +123,10 @@ class FixEOStableRXKokkos : public FixEOStableRX {
   DAT::tdual_int_scalar k_error_flag;
   DAT::tdual_int_scalar k_warning_flag;
 
-  int pack_reverse_comm(int, int, double *);
-  void unpack_reverse_comm(int, int *, double *);
-  int pack_forward_comm(int , int *, double *, int, int *);
-  void unpack_forward_comm(int , int , double *);
+  int pack_reverse_comm(int, int, double *) override;
+  void unpack_reverse_comm(int, int *, double *) override;
+  int pack_forward_comm(int , int *, double *, int, int *) override;
+  void unpack_forward_comm(int , int , double *) override;
 
   };
 }
