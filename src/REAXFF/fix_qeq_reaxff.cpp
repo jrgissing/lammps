@@ -32,7 +32,6 @@
 #include "memory.h"
 #include "modify.h"
 #include "neigh_list.h"
-#include "neigh_request.h"
 #include "neighbor.h"
 #include "pair.h"
 #include "region.h"
@@ -416,14 +415,10 @@ void FixQEqReaxFF::init()
                        "boundary when using charge equilibration with ReaxFF.");
   }
 
-  // we need a half neighbor list w/ Newton off and ghost neighbors
+  // we need a half neighbor list w/ Newton off
   // built whenever re-neighboring occurs
 
-  int irequest = neighbor->request(this,instance_me);
-  neighbor->requests[irequest]->pair = 0;
-  neighbor->requests[irequest]->fix = 1;
-  neighbor->requests[irequest]->newton = 2;
-  neighbor->requests[irequest]->ghost = 1;
+  neighbor->add_request(this, NeighConst::REQ_NEWTON_OFF);
 
   init_shielding();
   init_taper();
