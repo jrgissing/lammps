@@ -953,6 +953,10 @@ void ReadData::command(int narg, char **arg)
       fp = nullptr;
     }
 
+    // return if called by read_system to extract topology info
+
+    if (readsysflag) return;
+
     // done if this was 2nd pass
 
     if (!firstpass) break;
