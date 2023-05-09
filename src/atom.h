@@ -320,7 +320,7 @@ class Atom : protected Pointers {
   void create_avec(const std::string &, int, char **, int);
   virtual AtomVec *new_avec(const std::string &, int, int &);
 
-  void init();
+  virtual void init();
   void setup();
 
   std::string get_style();
@@ -373,8 +373,6 @@ class Atom : protected Pointers {
   int find_custom(const char *, int &, int &);
   virtual int add_custom(const char *, int, int);
   virtual void remove_custom(int, int, int);
-
-  virtual void sync_modify(ExecutionSpace, unsigned int, unsigned int) {}
 
   void *extract(const char *);
   int extract_datatype(const char *);
