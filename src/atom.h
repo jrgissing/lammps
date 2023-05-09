@@ -110,6 +110,14 @@ class Atom : protected Pointers {
   int **improper_type;
   tagint **improper_atom1, **improper_atom2, **improper_atom3, **improper_atom4;
 
+  // read_system command
+
+  int readsysflag;
+  int sysmax_bondperatom;
+  int sysmax_angleperatom;
+  int sysmax_dihedralperatom;
+  int sysmax_improperperatom;
+
   // PERI package
 
   double *vfrac, *s0;

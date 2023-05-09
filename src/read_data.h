@@ -28,8 +28,11 @@ class ReadData : public Command {
  public:
   ReadData(class LAMMPS *);
   ~ReadData() override;
+  enum{NONE, APPEND, VALUE, MERGE};
   void command(int, char **) override;
   static bool is_data_section(const std::string &);
+
+  int addflag, readsysflag;
 
  private:
   int me, compressed;
@@ -67,7 +70,7 @@ class ReadData : public Command {
 
   // optional args
 
-  int addflag, offsetflag, shiftflag, coeffflag, settypeflag;
+  int offsetflag, shiftflag, coeffflag, settypeflag;
   int tlabelflag, blabelflag, alabelflag, dlabelflag, ilabelflag;
   tagint addvalue;
   int toffset, boffset, aoffset, doffset, ioffset;

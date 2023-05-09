@@ -75,8 +75,6 @@ bool ReadData::is_data_section(const std::string &keyword)
   return section_keywords.count(keyword) > 0;
 }
 
-enum{NONE, APPEND, VALUE, MERGE};
-
 // pair style suffixes to ignore
 // when matching Pair Coeffs comment to currently-defined pair style
 
@@ -94,7 +92,8 @@ ReadData::ReadData(LAMMPS *_lmp) : Command(_lmp), fp(nullptr), coeffarg(nullptr)
   keyword = new char[MAXLINE];
   style = new char[MAXLINE];
   buffer = new char[CHUNK * MAXLINE];
-  ncoeffarg = maxcoeffarg = 0;
+  readsysflag = ncoeffarg = maxcoeffarg = 0;
+  addflag = NONE;
 
   // customize for new sections
   // pointers to atom styles that store bonus info
@@ -136,6 +135,16 @@ ReadData::~ReadData()
 
 void ReadData::command(int narg, char **arg)
 {
+
+  if (readsysflag) {
+    int firstpass = 1;
+    bonds(firstpass);
+    angles(firstpass);
+    dihedrals(firstpass);
+    impropers(firstpass);
+    return;
+  }
+
   if (narg < 1) utils::missing_cmd_args(FLERR, "read_data", error);
 
   MPI_Barrier(world);
@@ -143,7 +152,6 @@ void ReadData::command(int narg, char **arg)
 
   // optional args
 
-  addflag = NONE;
   coeffflag = 1;
   id_offset = mol_offset = 0;
   offsetflag = shiftflag = settypeflag = 0;
@@ -1539,6 +1547,8 @@ void ReadData::bonds(int firstpass)
 
     if (me == 0) utils::logmesg(lmp, "  {} = max bonds/atom\n", maxall);
 
+    if (readsysflag && maxall > atom->sysmax_bondperatom) atom->sysmax_bondperatom = maxall;
+
     if (addflag != NONE) {
       if (maxall > atom->bond_per_atom)
         error->all(FLERR,
@@ -1617,6 +1627,8 @@ void ReadData::angles(int firstpass)
     if (addflag == NONE) maxall += atom->extra_angle_per_atom;
 
     if (me == 0) utils::logmesg(lmp, "  {} = max angles/atom\n", maxall);
+
+    if (readsysflag && maxall > atom->sysmax_angleperatom) atom->sysmax_angleperatom = maxall;
 
     if (addflag != NONE) {
       if (maxall > atom->angle_per_atom)
@@ -1698,6 +1710,8 @@ void ReadData::dihedrals(int firstpass)
 
     if (me == 0) utils::logmesg(lmp, "  {} = max dihedrals/atom\n", maxall);
 
+    if (readsysflag && maxall > atom->sysmax_dihedralperatom) atom->sysmax_dihedralperatom = maxall;
+
     if (addflag != NONE) {
       if (maxall > atom->dihedral_per_atom)
         error->all(FLERR,
@@ -1777,6 +1791,8 @@ void ReadData::impropers(int firstpass)
     if (addflag == NONE) maxall += atom->extra_improper_per_atom;
 
     if (me == 0) utils::logmesg(lmp, "  {} = max impropers/atom\n", maxall);
+
+    if (readsysflag && maxall > atom->sysmax_improperperatom) atom->sysmax_improperperatom = maxall;
 
     if (addflag != NONE) {
       if (maxall > atom->improper_per_atom)
