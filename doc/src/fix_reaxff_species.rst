@@ -198,9 +198,8 @@ The 2 values in the global vector are as follows:
   #. total number of distinct species
 
 The per-atom vector stores the molecule ID for each atom as identified
-by the fix.  If an atom is not in a molecule, its ID will be 0.
-For atoms in the same molecule, the molecule ID for all of them
-will be the same, and molecule IDs will range from 1 to the number
+by the fix. For atoms in the same molecule, the molecule ID for all of
+them will be the same, and molecule IDs will range from 1 to the number
 of molecules.
 
 No parameter of this fix can be used with the *start/stop* keywords of
