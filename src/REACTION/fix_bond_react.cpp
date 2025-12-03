@@ -28,6 +28,7 @@ Contributing Author: Jacob Gissinger (jgissing@stevens.edu)
 #include "force.h"
 #include "group.h"
 #include "input.h"
+#include "json.h"
 #include "json_metadata.h"
 #include "math_const.h"
 #include "math_extra.h"
@@ -144,7 +145,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
   // let's find number of reactions specified
   int nrxns = 0;
   for (int i = 3; i < narg; i++) {
-    if (strcmp(arg[i],"react") == 0) {
+    if (strcmp(arg[i],"react") == 0 || strcmp(arg[i],"react/json") == 0) {
       nrxns++;
       i = i + 6; // skip past mandatory arguments
       if (i > narg) utils::missing_cmd_args(FLERR,"fix bond/react react", error);
@@ -256,7 +257,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
         fflush(fpout);
       }
       iarg += 2;
-    } else if (strcmp(arg[iarg],"react") == 0) {
+    } else if (strcmp(arg[iarg],"react") == 0 || strcmp(arg[iarg],"react/json") == 0) {
       break;
     } else error->all(FLERR, iarg, "Unknown fix bond/react command keyword {}", arg[iarg]);
   }
@@ -293,10 +294,15 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
     rxn.v_nevery = rxn.v_prob = -1;
   }
 
+  json reacter;
+  int json_flag = 0;
+
   for (auto &rxn : rxns) {
 
-    if (strcmp(arg[iarg],"react") != 0) error->all(FLERR,"Illegal fix bond/react command: "
-                                                   "'react' or 'stabilization' has incorrect arguments");
+    if (strcmp(arg[iarg],"react") != 0 && strcmp(arg[iarg],"react/json") != 0) error->all(FLERR,"Illegal fix bond/react command: "
+                                                   "'react', 'react/json', or 'stabilization' has incorrect arguments");
+
+    if (strcmp(arg[iarg], "react/json") == 0) json_flag = 1;
     iarg++;
 
     rxn.name = arg[iarg++];
@@ -337,20 +343,66 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
       rxn.rmaxsq = cutoff*cutoff;
     iarg++;
 
-    int mol_idx = atom->find_molecule(arg[iarg++]);
-    if (mol_idx == -1) error->all(FLERR,"Pre-reaction molecule template ID for "
-                                             "fix bond/react does not exist");
-    rxn.reactant = atom->molecules[mol_idx];
-    mol_idx = atom->find_molecule(arg[iarg++]);
-    if (mol_idx == -1) error->all(FLERR,"Post-reaction molecule template ID for "
-                                           "fix bond/react does not exist");
-    rxn.product = atom->molecules[mol_idx];
+    int mol_idx;
+    if (!json_flag) {
+      mol_idx = atom->find_molecule(arg[iarg++]);
+      if (mol_idx == -1) error->all(FLERR,"Pre-reaction molecule template ID for "
+                                              "fix bond/react does not exist");
+      rxn.reactant = atom->molecules[mol_idx];
+      mol_idx = atom->find_molecule(arg[iarg++]);
+      if (mol_idx == -1) error->all(FLERR,"Post-reaction molecule template ID for "
+                                            "fix bond/react does not exist");
+      rxn.product = atom->molecules[mol_idx];
 
-    //read map file
-    rxn.mapfilename = arg[iarg];
-    iarg++;
+      //read map file
+      rxn.mapfilename = arg[iarg++];
+    } else {
+      std::string filename = arg[iarg];
+      if (utils::strmatch(filename, "\\.json$")) {
+        std::vector<std::uint8_t> jsondata;
+        int jsondata_size = 0;
 
-    while (iarg < narg && strcmp(arg[iarg],"react") != 0) {
+        if (comm->me == 0) {
+          fp = fopen(filename.c_str(), "r");
+          if (fp == nullptr)
+            error->one(FLERR, filename, "Cannot open molecule file {}: {}", filename, utils::getsyserror());
+          try {
+            // try to parse as a JSON file. parser throws an exception on errors
+            // if successful, temporarily serialize to bytearray for communication
+            reacter = json::parse(fp);
+            jsondata = json::to_ubjson(reacter);
+            jsondata_size = jsondata.size();
+            fclose(fp);
+          } catch (std::exception &e) {
+            fclose(fp);
+            error->one(FLERR, filename, "Error parsing JSON file {}: {}", filename, e.what());
+          }
+        }
+
+        if (jsondata_size > 0) {
+          // convert back to json class on all processors and free temporary storage
+          reacter.clear();
+          reacter = json::from_ubjson(jsondata);
+          jsondata.clear();    // free binary data
+
+          // process JSON data
+          std::string id_str = "reactant_" + std::to_string(rxn.ID);
+          atom->add_molecule(id_str.c_str(), reacter["reactant"]);
+          mol_idx = atom->find_molecule(id_str.c_str());
+          rxn.reactant = atom->molecules[mol_idx];
+
+          id_str = "product_" + std::to_string(rxn.ID);
+          atom->add_molecule(id_str.c_str(), reacter["product"]);
+          mol_idx = atom->find_molecule(id_str.c_str());
+          rxn.product = atom->molecules[mol_idx];
+          iarg++;
+        } else {
+          error->all(FLERR, "Molecule file {} does not contain JSON data", filename);
+        }
+      }
+    }
+
+    while (iarg < narg && strcmp(arg[iarg],"react") != 0 && strcmp(arg[iarg],"react/json") != 0) {
       if (strcmp(arg[iarg],"prob") == 0) {
         if (iarg+3 > narg) error->all(FLERR,"Illegal fix bond/react command: "
                                       "'prob' keyword has too few arguments");
@@ -413,7 +465,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
       } else if (strcmp(arg[iarg],"modify_create") == 0) {
         if (iarg++ > narg) error->all(FLERR,"Illegal fix bond/react command: "
                                       "'modify_create' has too few arguments");
-        while (iarg < narg && strcmp(arg[iarg],"react") != 0) {
+        while (iarg < narg && strcmp(arg[iarg],"react") != 0 && strcmp(arg[iarg],"react/json") != 0) {
           if (strcmp(arg[iarg],"fit") == 0) {
             if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
                                           "'modify_create' has too few arguments");
@@ -432,6 +484,9 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
             iarg += 2;
           } else break;
         }
+      } else if (strcmp(arg[iarg],"react_modify") == 0) {
+        rxn.mapfilename = arg[iarg+1];
+        iarg += 2;
       } else if (strcmp(arg[iarg],"rate_limit") == 0) {
         error->all(FLERR,"Fix bond/react: 'rate_limit' as an 'individual keyword' has been deprecated. "
                          "Please use the 'rate_limit' common keyword instead, which can be applied to one or more reactions.");
@@ -537,12 +592,103 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
 
   // read all map files afterward
   for (auto &rxn : rxns) {
-    fp = fopen(rxn.mapfilename.c_str(),"r");
-    if (fp == nullptr) error->one(FLERR, "Fix bond/react: Cannot open map file {}", rxn.mapfilename);
     rxn.reactant->check_attributes();
     rxn.product->check_attributes();
-    read_map_file(rxn);
-    fclose(fp);
+
+    if (!json_flag) {
+      fp = fopen(rxn.mapfilename.c_str(),"r");
+      if (fp == nullptr) error->one(FLERR, "Fix bond/react: Cannot open map file {}", rxn.mapfilename);
+      read_map_file(rxn);
+      fclose(fp);
+    } else {
+      // equivalences
+      for (int i = 0; i < rxn.reactant->natoms; i++) {
+        //equivalences is-> clmn 1: post-reacted, clmn 2: pre-reacted
+        rxn.atoms[i].amap[0] = i+1;
+        rxn.atoms[i].amap[1] = i+1;
+        //reverse_equiv is-> clmn 1: pre-reacted, clmn 2: post-reacted
+        rxn.atoms[i].ramap[0] = i+1;
+        rxn.atoms[i].ramap[1] = i+1;
+      }
+
+      // EdgeIDs and InitiatorIDs
+      for (int i = 0; i < rxn.reactant->nfragments; i++) {
+        if (strcmp(rxn.reactant->fragmentnames[i].c_str(), "\"edgeIDs\"") == 0) {
+          for (int iatom = 0; iatom < rxn.reactant->natoms; iatom++) {
+            rxn.atoms[iatom].edge = rxn.reactant->fragmentmask[i][iatom];
+          }
+        }
+        if (strcmp(rxn.reactant->fragmentnames[i].c_str(), "\"initiatorIDs\"") == 0) {
+          int i_flag = 0;
+          for (int iatom = 0; iatom < rxn.reactant->natoms; iatom++) {
+            if (rxn.reactant->fragmentmask[i][iatom] == 1) {
+              if (i_flag == 0) {
+                i_flag = 1;
+                rxn.ibonding = iatom + 1;
+              } else {
+                rxn.jbonding = iatom + 1;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // check if there are constraints
+      if (utils::strmatch(rxn.mapfilename, "\\.json$")) {
+        std::vector<std::uint8_t> jsondata;
+        int jsondata_size = 0;
+
+        if (comm->me == 0) {
+          fp = fopen(rxn.mapfilename.c_str(), "r");
+          if (fp == nullptr)
+            error->one(FLERR, rxn.mapfilename, "Cannot open constraints file {}: {}", rxn.mapfilename, utils::getsyserror());
+          try {
+            // try to parse as a JSON file. parser throws an exception on errors
+            // if successful, temporarily serialize to bytearray for communication
+            json constraints_json = json::parse(fp);
+            jsondata = json::to_ubjson(constraints_json);
+            jsondata_size = jsondata.size();
+            fclose(fp);
+          } catch (std::exception &e) {
+            fclose(fp);
+            error->one(FLERR, rxn.mapfilename, "Error parsing JSON file {}: {}", rxn.mapfilename, e.what());
+          }
+        }
+
+        if (jsondata_size > 0) {
+          // convert back to json class on all processors and free temporary storage
+          json constraints_json;
+          int rv;
+          constraints_json = json::from_ubjson(jsondata);
+          jsondata.clear();    // free binary data
+
+          if (constraints_json.contains("Constraints")) {
+            int nconstraints = constraints_json["Constraints"]["data"].size();
+            rxn.constraints.resize(nconstraints);
+
+            for (auto &item : constraints_json["Constraints"]["data"]) {
+              std::string ctype = to_string(item[0]);
+              if (strcmp(ctype.c_str(), "\"angle\"") == 0) {
+                std::string id1 = to_string(item[1][0]);
+                std::string id2 = to_string(item[1][1]);
+                std::string id3 = to_string(item[1][2]);
+                double amin = (double)item[1][3];
+                double amax = (double)item[1][4];
+                char line[MAXLINE];
+                snprintf(line, MAXLINE, "angle %s %s %s %lg %lg", id1.c_str(), id2.c_str(), id3.c_str(), amin, amax);
+                ReadConstraints(line, rxn);
+              } else {
+                error->one(FLERR, "Fix bond/react: Unknown constraint type {} in constraints file {}", ctype, rxn.mapfilename);
+              }
+            }
+          }
+        } else {
+          error->all(FLERR, "Constraints file {} does not contain JSON data", rxn.mapfilename);
+        }
+      }
+    }
+
     rxn.iatomtype = rxn.reactant->type[rxn.ibonding-1];
     rxn.jatomtype = rxn.reactant->type[rxn.jbonding-1];
     find_landlocked_atoms(rxn);
@@ -4231,7 +4377,7 @@ void FixBondReact::ReadConstraints(char *line, Reaction &rxn)
   auto *constraint_type = new char[MAXLINE];
   rxn.constraintstr = "("; // string for boolean constraint logic
   for (auto &constraint : rxn.constraints) {
-    readline(line);
+    if(!utils::strmatch(rxn.mapfilename, "\\.json$")) readline(line);
     // find left parentheses, add to constraintstr, and update line
     for (int j = 0; j < (int)strlen(line); j++) {
       if (line[j] == '(') rxn.constraintstr += "(";
