@@ -663,21 +663,24 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
           constraints_json = json::from_ubjson(jsondata);
           jsondata.clear();    // free binary data
 
-          if (constraints_json.contains("Constraints")) {
-            int nconstraints = constraints_json["Constraints"]["data"].size();
+          if (constraints_json.contains("constraints")) {
+            int nconstraints = constraints_json["constraints"].size();
             rxn.constraints.resize(nconstraints);
 
-            for (auto &item : constraints_json["Constraints"]["data"]) {
-              std::string ctype = to_string(item[0]);
+            for (auto &item : constraints_json["constraints"]) {
+              auto data = item["data"];
+              std::string ctype = to_string(data[0]);
               if (strcmp(ctype.c_str(), "\"angle\"") == 0) {
-                std::string id1 = to_string(item[1][0]);
-                std::string id2 = to_string(item[1][1]);
-                std::string id3 = to_string(item[1][2]);
-                double amin = (double)item[1][3];
-                double amax = (double)item[1][4];
+                std::string id1 = to_string(data[1]);
+                std::string id2 = to_string(data[2]);
+                std::string id3 = to_string(data[3]);
+                double amin = (double)data[4];
+                double amax = (double)data[5];
                 char line[MAXLINE];
                 snprintf(line, MAXLINE, "angle %s %s %s %lg %lg", id1.c_str(), id2.c_str(), id3.c_str(), amin, amax);
                 ReadConstraints(line, rxn);
+              } else if (strcmp(ctype.c_str(), "\"deleteIDs\"") == 0) {
+                continue; // implement
               } else {
                 error->one(FLERR, "Fix bond/react: Unknown constraint type {} in constraints file {}", ctype, rxn.mapfilename);
               }
