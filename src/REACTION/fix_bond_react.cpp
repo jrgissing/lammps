@@ -611,11 +611,54 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
         rxn.atoms[i].ramap[1] = i+1;
       }
 
-      // EdgeIDs and InitiatorIDs
       for (int i = 0; i < rxn.reactant->nfragments; i++) {
         if (strcmp(rxn.reactant->fragmentnames[i].c_str(), "\"edgeIDs\"") == 0) {
           for (int iatom = 0; iatom < rxn.reactant->natoms; iatom++) {
             rxn.atoms[iatom].edge = rxn.reactant->fragmentmask[i][iatom];
+          }
+        }
+        if (strcmp(rxn.reactant->fragmentnames[i].c_str(), "\"deleteIDs\"") == 0) {
+          for (int iatom = 0; iatom < rxn.reactant->natoms; iatom++) {
+            rxn.atoms[iatom].deleted = rxn.reactant->fragmentmask[i][iatom];
+          }
+        }
+        if (strcmp(rxn.reactant->fragmentnames[i].c_str(), "\"createIDs\"") == 0) {
+          rxn.create_atoms_flag = 1;
+          for (int iatom = 0; iatom < rxn.product->natoms; iatom++) {
+            rxn.atoms[iatom].created = rxn.product->fragmentmask[i][iatom];
+          }
+
+          if (rxn.product->xflag == 0)
+            error->one(FLERR, Error::NOLASTLINE,
+                      "Fix bond/react: 'Coords' section required in post-reaction template when creating new atoms");
+          if (atom->rmass_flag && !rxn.product->rmassflag)
+            error->one(FLERR, Error::NOLASTLINE,
+                      "Fix bond/react: 'Masses' section required in post-reaction template when creating new atoms "
+                      "and per-atom masses are defined.");
+        }
+        if (strcmp(rxn.reactant->fragmentnames[i].c_str(), "\"chiralIDs\"") == 0) {
+          for (int iatom = 0; iatom < rxn.reactant->natoms; iatom++) {
+            rxn.atoms[iatom].chiral[0] = rxn.reactant->fragmentmask[i][iatom];
+            if (rxn.reactant->xflag == 0)
+                error->one(FLERR,"Fix bond/react: Molecule template 'Coords' section required for chiralIDs keyword");
+            if ((int) rxn.reactant->nspecial[iatom][0] != 4)
+              error->one(FLERR,"Fix bond/react: Chiral atoms must have exactly four first neighbors");
+            for (int j = 0; j < 4; j++) {
+              for (int k = j+1; k < 4; k++) {
+                if (rxn.reactant->type[rxn.reactant->special[iatom][j]-1] ==
+                    rxn.reactant->type[rxn.reactant->special[iatom][k]-1])
+                  error->one(FLERR,"Fix bond/react: First neighbors of chiral atoms must be of mutually different types");
+              }
+            }
+            // record order of atom types, and coords
+            double my4coords[12];
+            for (int j = 0; j < 4; j++) {
+              rxn.atoms[iatom].chiral[j+2] = rxn.reactant->type[rxn.reactant->special[iatom][j]-1];
+              for (int k = 0; k < 3; k++) {
+                my4coords[3*j+k] = rxn.reactant->x[rxn.reactant->special[iatom][j]-1][k];
+              }
+            }
+            rxn.atoms[iatom].chiral[1] = get_chirality(my4coords);
           }
         }
         if (strcmp(rxn.reactant->fragmentnames[i].c_str(), "\"initiatorIDs\"") == 0) {
@@ -657,34 +700,51 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
         }
 
         if (jsondata_size > 0) {
-          // convert back to json class on all processors and free temporary storage
           json constraints_json;
           int rv;
           constraints_json = json::from_ubjson(jsondata);
           jsondata.clear();    // free binary data
 
           if (constraints_json.contains("constraints")) {
+            std::string boolean = "";
+            size_t pos;
+
+            if (constraints_json.contains("bool")) {
+              boolean += constraints_json["bool"];
+              boolean.erase(remove_if(boolean.begin(), boolean.end(), isspace), boolean.end());
+            }
             int nconstraints = constraints_json["constraints"].size();
             rxn.constraints.resize(nconstraints);
+            for (int i = 0; i < nconstraints; i++) rxn.constraints[i].ID = i;
 
-            for (auto &item : constraints_json["constraints"]) {
-              auto data = item["data"];
-              std::string ctype = to_string(data[0]);
-              if (strcmp(ctype.c_str(), "\"angle\"") == 0) {
-                std::string id1 = to_string(data[1]);
-                std::string id2 = to_string(data[2]);
-                std::string id3 = to_string(data[3]);
-                double amin = (double)data[4];
-                double amax = (double)data[5];
-                char line[MAXLINE];
-                snprintf(line, MAXLINE, "angle %s %s %s %lg %lg", id1.c_str(), id2.c_str(), id3.c_str(), amin, amax);
-                ReadConstraints(line, rxn);
-              } else if (strcmp(ctype.c_str(), "\"deleteIDs\"") == 0) {
-                continue; // implement
+            for (auto &constraint : constraints_json["constraints"].items()) {
+              json constraint_data = constraint.value();
+              std::string line = constraint_data["type"].get<std::string>() + " ";
+              std::string constraint_id = constraint_data["id"].get<std::string>();
+              int idlen = constraint_id.length();
+
+              for (auto val : constraint_data["data"]) line += to_string(val) + " ";
+
+              if ((pos = boolean.find(constraint_id)) != std::string::npos) {
+                boolean.replace(pos, idlen, line);
               } else {
-                error->one(FLERR, "Fix bond/react: Unknown constraint type {} in constraints file {}", ctype, rxn.mapfilename);
+                boolean += line + "\n";
               }
             }
+
+            // add a new line after each && and || to parse in ReadConstraints
+            pos = 0;
+            while ((pos = boolean.find("&&", pos)) != std::string::npos) {
+                boolean.replace(pos, 2, "&&\n");
+                pos += 3;
+            }
+            pos = 0;
+            while ((pos = boolean.find("||", pos)) != std::string::npos) {
+                boolean.replace(pos, 2, "||\n");
+                pos += 3;
+            }
+
+            ReadConstraints((char *)boolean.c_str(), rxn);
           }
         } else {
           error->all(FLERR, "Constraints file {} does not contain JSON data", rxn.mapfilename);
@@ -4376,11 +4436,18 @@ void FixBondReact::ReadConstraints(char *line, Reaction &rxn)
   int rv;
   double tmp[MAXCONARGS];
   char **strargs,*ptr,*lptr;
+  std::stringstream jsonline(line);
   memory->create(strargs,MAXCONARGS,MAXLINE,"bond/react:strargs");
   auto *constraint_type = new char[MAXLINE];
   rxn.constraintstr = "("; // string for boolean constraint logic
   for (auto &constraint : rxn.constraints) {
-    if(!utils::strmatch(rxn.mapfilename, "\\.json$")) readline(line);
+    if (!utils::strmatch(rxn.mapfilename, "\\.json$")) readline(line);
+    else {
+      std::string tmpline;
+      std::getline(jsonline, tmpline);
+      line = strdup(tmpline.c_str());
+    }
+
     // find left parentheses, add to constraintstr, and update line
     for (int j = 0; j < (int)strlen(line); j++) {
       if (line[j] == '(') rxn.constraintstr += "(";
