@@ -28,6 +28,8 @@ Contributing Author: Jacob Gissinger (jgissing@stevens.edu)
 #include "force.h"
 #include "group.h"
 #include "input.h"
+#include "json.h"
+#include "json_metadata.h"
 #include "math_const.h"
 #include "math_extra.h"
 #include "memory.h"
@@ -35,6 +37,7 @@ Contributing Author: Jacob Gissinger (jgissing@stevens.edu)
 #include "molecule.h"
 #include "neigh_list.h"
 #include "neighbor.h"
+#include "output.h"
 #include "pair.h"
 #include "random_mars.h"
 #include "reset_atoms_mol.h"
@@ -57,8 +60,8 @@ using namespace FixConst;
 using namespace MathConst;
 
 static const char cite_fix_bond_react[] =
-    "fix bond/react: reacter.org doi:10.1016/j.polymer.2017.09.038, "
-    "doi:10.1021/acs.macromol.0c02012, doi:10.1016/j.cpc.2024.109287\n\n"
+    "fix bond/react: https://reacter.org, https://doi.org/10.1016/j.polymer.2017.09.038, "
+    "https://doi.org/10.1021/acs.macromol.0c02012, https://doi.org/10.1016/j.cpc.2024.109287\n\n"
     "@Article{Gissinger17,\n"
     " author = {J. R. Gissinger and B. D. Jensen and K. E. Wise},\n"
     " title = {Modeling Chemical Reactions in Classical Molecular Dynamics Simulations},\n"
@@ -97,11 +100,15 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
   fix2 = nullptr;
   fix3 = nullptr;
   reset_mol_ids = nullptr;
+  fpout = nullptr;
+  json_init = 0;
+  outflag = false;
 
   if (narg < 8) utils::missing_cmd_args(FLERR,"fix bond/react", error);
 
   newton_bond = force->newton_bond;
 
+  thermo_modify_colname = 1;
   restart_global = 1;
   force_reneighbor = 1;
   next_reneighbor = -1;
@@ -138,7 +145,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
   // let's find number of reactions specified
   int nrxns = 0;
   for (int i = 3; i < narg; i++) {
-    if (strcmp(arg[i],"react") == 0) {
+    if (strcmp(arg[i],"react") == 0 || strcmp(arg[i],"react/json") == 0) {
       nrxns++;
       i = i + 6; // skip past mandatory arguments
       if (i > narg) utils::missing_cmd_args(FLERR,"fix bond/react react", error);
@@ -211,7 +218,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
       if (iarg+rlm.Nrxns+4 > narg) utils::missing_cmd_args(FLERR,"fix bond/react rate_limit", error);
       for (int i = 0; i < rlm.Nrxns; i++) {
         std::string tmpstr = arg[iarg+1+i];
-        rlm.rxn_names.push_back(tmpstr);
+        rlm.rxn_names.push_back(std::move(tmpstr));
       }
       char *myarg = arg[iarg+rlm.Nrxns+1]; // Nlimit
       if (strncmp(myarg,"v_",2) == 0) {
@@ -229,7 +236,28 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
       if (iarg+2 > narg) utils::missing_cmd_args(FLERR,"fix bond/react seed", error);
       shuffle_seed = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
       iarg += 2;
-    } else if (strcmp(arg[iarg],"react") == 0) {
+    } else if (strcmp(arg[iarg], "file") == 0) {
+      if (iarg + 2 > narg)
+        utils::missing_cmd_args(FLERR, std::string("Fix bond/react ") + arg[iarg], error);
+      outflag = true;
+      if (comm->me == 0) {
+        if (fpout) fclose(fpout);
+        fpout = fopen(arg[iarg + 1], "w");
+        if (fpout == nullptr)
+          error->one(FLERR, "Cannot open fix bond/react output file {}: {}", arg[iarg + 1],
+                     utils::getsyserror());
+        // header for 'delete' keyword JSON output
+        fprintf(fpout, "{\n");
+        fprintf(fpout, "    \"application\": \"LAMMPS\",\n");
+        fprintf(fpout, "    \"format\": \"dump\",\n");
+        fprintf(fpout, "    \"style\": \"molecules\",\n");
+        fprintf(fpout, "    \"title\": \"fix bond/react\",\n");
+        fprintf(fpout, "    \"revision\": 1,\n");
+        fprintf(fpout, "    \"timesteps\": [\n");
+        fflush(fpout);
+      }
+      iarg += 2;
+    } else if (strcmp(arg[iarg],"react") == 0 || strcmp(arg[iarg],"react/json") == 0) {
       break;
     } else error->all(FLERR, iarg, "Unknown fix bond/react command keyword {}", arg[iarg]);
   }
@@ -266,10 +294,15 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
     rxn.v_nevery = rxn.v_prob = -1;
   }
 
+  json reacter;
+  int json_flag = 0;
+
   for (auto &rxn : rxns) {
 
-    if (strcmp(arg[iarg],"react") != 0) error->all(FLERR,"Illegal fix bond/react command: "
-                                                   "'react' or 'stabilization' has incorrect arguments");
+    if (strcmp(arg[iarg],"react") != 0 && strcmp(arg[iarg],"react/json") != 0) error->all(FLERR,"Illegal fix bond/react command: "
+                                                   "'react', 'react/json', or 'stabilization' has incorrect arguments");
+
+    if (strcmp(arg[iarg], "react/json") == 0) json_flag = 1;
     iarg++;
 
     rxn.name = arg[iarg++];
@@ -310,20 +343,66 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
       rxn.rmaxsq = cutoff*cutoff;
     iarg++;
 
-    int mol_idx = atom->find_molecule(arg[iarg++]);
-    if (mol_idx == -1) error->all(FLERR,"Pre-reaction molecule template ID for "
-                                             "fix bond/react does not exist");
-    rxn.reactant = atom->molecules[mol_idx];
-    mol_idx = atom->find_molecule(arg[iarg++]);
-    if (mol_idx == -1) error->all(FLERR,"Post-reaction molecule template ID for "
-                                           "fix bond/react does not exist");
-    rxn.product = atom->molecules[mol_idx];
+    int mol_idx;
+    if (!json_flag) {
+      mol_idx = atom->find_molecule(arg[iarg++]);
+      if (mol_idx == -1) error->all(FLERR,"Pre-reaction molecule template ID for "
+                                              "fix bond/react does not exist");
+      rxn.reactant = atom->molecules[mol_idx];
+      mol_idx = atom->find_molecule(arg[iarg++]);
+      if (mol_idx == -1) error->all(FLERR,"Post-reaction molecule template ID for "
+                                            "fix bond/react does not exist");
+      rxn.product = atom->molecules[mol_idx];
 
-    //read map file
-    rxn.mapfilename = arg[iarg];
-    iarg++;
+      //read map file
+      rxn.mapfilename = arg[iarg++];
+    } else {
+      std::string filename = arg[iarg];
+      if (utils::strmatch(filename, "\\.json$")) {
+        std::vector<std::uint8_t> jsondata;
+        int jsondata_size = 0;
 
-    while (iarg < narg && strcmp(arg[iarg],"react") != 0) {
+        if (comm->me == 0) {
+          fp = fopen(filename.c_str(), "r");
+          if (fp == nullptr)
+            error->one(FLERR, filename, "Cannot open molecule file {}: {}", filename, utils::getsyserror());
+          try {
+            // try to parse as a JSON file. parser throws an exception on errors
+            // if successful, temporarily serialize to bytearray for communication
+            reacter = json::parse(fp);
+            jsondata = json::to_ubjson(reacter);
+            jsondata_size = jsondata.size();
+            fclose(fp);
+          } catch (std::exception &e) {
+            fclose(fp);
+            error->one(FLERR, filename, "Error parsing JSON file {}: {}", filename, e.what());
+          }
+        }
+
+        if (jsondata_size > 0) {
+          // convert back to json class on all processors and free temporary storage
+          reacter.clear();
+          reacter = json::from_ubjson(jsondata);
+          jsondata.clear();    // free binary data
+
+          // process JSON data
+          std::string id_str = "reactant_" + std::to_string(rxn.ID);
+          atom->add_molecule(id_str.c_str(), reacter["reactant"]);
+          mol_idx = atom->find_molecule(id_str.c_str());
+          rxn.reactant = atom->molecules[mol_idx];
+
+          id_str = "product_" + std::to_string(rxn.ID);
+          atom->add_molecule(id_str.c_str(), reacter["product"]);
+          mol_idx = atom->find_molecule(id_str.c_str());
+          rxn.product = atom->molecules[mol_idx];
+          iarg++;
+        } else {
+          error->all(FLERR, "Molecule file {} does not contain JSON data", filename);
+        }
+      }
+    }
+
+    while (iarg < narg && strcmp(arg[iarg],"react") != 0 && strcmp(arg[iarg],"react/json") != 0) {
       if (strcmp(arg[iarg],"prob") == 0) {
         if (iarg+3 > narg) error->all(FLERR,"Illegal fix bond/react command: "
                                       "'prob' keyword has too few arguments");
@@ -348,7 +427,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
                                                 "used without stabilization keyword");
         if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
                                       "'stabilize_steps' has too few arguments");
-        rxn.limit_duration = utils::numeric(FLERR,arg[iarg+1],false,lmp);
+        rxn.limit_duration = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
         rxn.stabilize_steps_flag = 1;
         iarg += 2;
       } else if (strcmp(arg[iarg],"custom_charges") == 0) {
@@ -386,7 +465,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
       } else if (strcmp(arg[iarg],"modify_create") == 0) {
         if (iarg++ > narg) error->all(FLERR,"Illegal fix bond/react command: "
                                       "'modify_create' has too few arguments");
-        while (iarg < narg && strcmp(arg[iarg],"react") != 0) {
+        while (iarg < narg && strcmp(arg[iarg],"react") != 0 && strcmp(arg[iarg],"react/json") != 0) {
           if (strcmp(arg[iarg],"fit") == 0) {
             if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
                                           "'modify_create' has too few arguments");
@@ -405,6 +484,9 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
             iarg += 2;
           } else break;
         }
+      } else if (strcmp(arg[iarg],"react_modify") == 0) {
+        rxn.mapfilename = arg[iarg+1];
+        iarg += 2;
       } else if (strcmp(arg[iarg],"rate_limit") == 0) {
         error->all(FLERR,"Fix bond/react: 'rate_limit' as an 'individual keyword' has been deprecated. "
                          "Please use the 'rate_limit' common keyword instead, which can be applied to one or more reactions.");
@@ -413,6 +495,17 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
                          "Please use the 'max_rxn' common keyword instead, which can be applied to one or more reactions.");
       } else error->all(FLERR,"Illegal fix bond/react command: unknown keyword");
     }
+  }
+
+  if (outflag) {
+    // add Metadata struct to print out react-ID to JSON molecules dump
+    // adds 'reaction' JSON key to each molecule
+    rxn_metadata = std::make_unique<json_metadata>();
+    rxn_metadata->key = "reaction";
+    std::vector<std::string> rxn_names;
+    rxn_names.reserve(rxns.size());
+    for (auto const& rxn : rxns) rxn_names.push_back(rxn.name);
+    rxn_metadata->values = std::move(rxn_names);
   }
 
   for (auto &rlm : rate_limits) {
@@ -499,12 +592,166 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
 
   // read all map files afterward
   for (auto &rxn : rxns) {
-    fp = fopen(rxn.mapfilename.c_str(),"r");
-    if (fp == nullptr) error->one(FLERR, "Fix bond/react: Cannot open map file {}", rxn.mapfilename);
     rxn.reactant->check_attributes();
     rxn.product->check_attributes();
-    read_map_file(rxn);
-    fclose(fp);
+
+    if (!json_flag) {
+      fp = fopen(rxn.mapfilename.c_str(),"r");
+      if (fp == nullptr) error->one(FLERR, "Fix bond/react: Cannot open map file {}", rxn.mapfilename);
+      read_map_file(rxn);
+      fclose(fp);
+    } else {
+      // equivalences
+      for (int i = 0; i < rxn.reactant->natoms; i++) {
+        //equivalences is-> clmn 1: post-reacted, clmn 2: pre-reacted
+        rxn.atoms[i].amap[0] = i+1;
+        rxn.atoms[i].amap[1] = i+1;
+        //reverse_equiv is-> clmn 1: pre-reacted, clmn 2: post-reacted
+        rxn.atoms[i].ramap[0] = i+1;
+        rxn.atoms[i].ramap[1] = i+1;
+      }
+
+      for (int i = 0; i < rxn.reactant->nfragments; i++) {
+        if (strcmp(rxn.reactant->fragmentnames[i].c_str(), "\"edgeIDs\"") == 0) {
+          for (int iatom = 0; iatom < rxn.reactant->natoms; iatom++) {
+            rxn.atoms[iatom].edge = rxn.reactant->fragmentmask[i][iatom];
+          }
+        }
+        if (strcmp(rxn.reactant->fragmentnames[i].c_str(), "\"deleteIDs\"") == 0) {
+          for (int iatom = 0; iatom < rxn.reactant->natoms; iatom++) {
+            rxn.atoms[iatom].deleted = rxn.reactant->fragmentmask[i][iatom];
+          }
+        }
+        if (strcmp(rxn.reactant->fragmentnames[i].c_str(), "\"createIDs\"") == 0) {
+          rxn.create_atoms_flag = 1;
+          for (int iatom = 0; iatom < rxn.product->natoms; iatom++) {
+            rxn.atoms[iatom].created = rxn.product->fragmentmask[i][iatom];
+          }
+
+          if (rxn.product->xflag == 0)
+            error->one(FLERR, Error::NOLASTLINE,
+                      "Fix bond/react: 'Coords' section required in post-reaction template when creating new atoms");
+          if (atom->rmass_flag && !rxn.product->rmassflag)
+            error->one(FLERR, Error::NOLASTLINE,
+                      "Fix bond/react: 'Masses' section required in post-reaction template when creating new atoms "
+                      "and per-atom masses are defined.");
+        }
+        if (strcmp(rxn.reactant->fragmentnames[i].c_str(), "\"chiralIDs\"") == 0) {
+          for (int iatom = 0; iatom < rxn.reactant->natoms; iatom++) {
+            rxn.atoms[iatom].chiral[0] = rxn.reactant->fragmentmask[i][iatom];
+            if (rxn.reactant->xflag == 0)
+                error->one(FLERR,"Fix bond/react: Molecule template 'Coords' section required for chiralIDs keyword");
+            if ((int) rxn.reactant->nspecial[iatom][0] != 4)
+              error->one(FLERR,"Fix bond/react: Chiral atoms must have exactly four first neighbors");
+            for (int j = 0; j < 4; j++) {
+              for (int k = j+1; k < 4; k++) {
+                if (rxn.reactant->type[rxn.reactant->special[iatom][j]-1] ==
+                    rxn.reactant->type[rxn.reactant->special[iatom][k]-1])
+                  error->one(FLERR,"Fix bond/react: First neighbors of chiral atoms must be of mutually different types");
+              }
+            }
+            // record order of atom types, and coords
+            double my4coords[12];
+            for (int j = 0; j < 4; j++) {
+              rxn.atoms[iatom].chiral[j+2] = rxn.reactant->type[rxn.reactant->special[iatom][j]-1];
+              for (int k = 0; k < 3; k++) {
+                my4coords[3*j+k] = rxn.reactant->x[rxn.reactant->special[iatom][j]-1][k];
+              }
+            }
+            rxn.atoms[iatom].chiral[1] = get_chirality(my4coords);
+          }
+        }
+        if (strcmp(rxn.reactant->fragmentnames[i].c_str(), "\"initiatorIDs\"") == 0) {
+          int i_flag = 0;
+          for (int iatom = 0; iatom < rxn.reactant->natoms; iatom++) {
+            if (rxn.reactant->fragmentmask[i][iatom] == 1) {
+              if (i_flag == 0) {
+                i_flag = 1;
+                rxn.ibonding = iatom + 1;
+              } else {
+                rxn.jbonding = iatom + 1;
+                break;
+              }
+            }
+          }
+        }
+      }
+
+      // check if there are constraints
+      if (utils::strmatch(rxn.mapfilename, "\\.json$")) {
+        std::vector<std::uint8_t> jsondata;
+        int jsondata_size = 0;
+
+        if (comm->me == 0) {
+          fp = fopen(rxn.mapfilename.c_str(), "r");
+          if (fp == nullptr)
+            error->one(FLERR, rxn.mapfilename, "Cannot open constraints file {}: {}", rxn.mapfilename, utils::getsyserror());
+          try {
+            // try to parse as a JSON file. parser throws an exception on errors
+            // if successful, temporarily serialize to bytearray for communication
+            json constraints_json = json::parse(fp);
+            jsondata = json::to_ubjson(constraints_json);
+            jsondata_size = jsondata.size();
+            fclose(fp);
+          } catch (std::exception &e) {
+            fclose(fp);
+            error->one(FLERR, rxn.mapfilename, "Error parsing JSON file {}: {}", rxn.mapfilename, e.what());
+          }
+        }
+
+        if (jsondata_size > 0) {
+          json constraints_json;
+          int rv;
+          constraints_json = json::from_ubjson(jsondata);
+          jsondata.clear();    // free binary data
+
+          if (constraints_json.contains("constraints")) {
+            std::string boolean = "";
+            size_t pos;
+
+            if (constraints_json.contains("bool")) {
+              boolean += constraints_json["bool"];
+              boolean.erase(remove_if(boolean.begin(), boolean.end(), isspace), boolean.end());
+            }
+            int nconstraints = constraints_json["constraints"].size();
+            rxn.constraints.resize(nconstraints);
+            for (int i = 0; i < nconstraints; i++) rxn.constraints[i].ID = i;
+
+            for (auto &constraint : constraints_json["constraints"].items()) {
+              json constraint_data = constraint.value();
+              std::string line = constraint_data["type"].get<std::string>() + " ";
+              std::string constraint_id = constraint_data["id"].get<std::string>();
+              int idlen = constraint_id.length();
+
+              for (auto val : constraint_data["data"]) line += to_string(val) + " ";
+
+              if ((pos = boolean.find(constraint_id)) != std::string::npos) {
+                boolean.replace(pos, idlen, line);
+              } else {
+                boolean += line + "\n";
+              }
+            }
+
+            // add a new line after each && and || to parse in ReadConstraints
+            pos = 0;
+            while ((pos = boolean.find("&&", pos)) != std::string::npos) {
+                boolean.replace(pos, 2, "&&\n");
+                pos += 3;
+            }
+            pos = 0;
+            while ((pos = boolean.find("||", pos)) != std::string::npos) {
+                boolean.replace(pos, 2, "||\n");
+                pos += 3;
+            }
+
+            ReadConstraints((char *)boolean.c_str(), rxn);
+          }
+        } else {
+          error->all(FLERR, "Constraints file {} does not contain JSON data", rxn.mapfilename);
+        }
+      }
+    }
+
     rxn.iatomtype = rxn.reactant->type[rxn.ibonding-1];
     rxn.jatomtype = rxn.reactant->type[rxn.jbonding-1];
     find_landlocked_atoms(rxn);
@@ -592,7 +839,7 @@ FixBondReact::~FixBondReact()
       if (constraint.type == Reaction::Constraint::Type::ARRHENIUS)
         delete constraint.arrhenius.rrhandom;
 
-  for (int i = 0; i < rxns.size(); i++) delete random[i];
+  for (std::size_t i = 0; i < rxns.size(); i++) delete random[i];
   delete[] random;
 
   delete reset_mol_ids;
@@ -611,6 +858,11 @@ FixBondReact::~FixBondReact()
   if (!id_fix2.empty() && modify->get_fix_by_id(id_fix2)) modify->delete_fix(id_fix2);
 
   delete[] set;
+
+  if (fpout) {
+    fprintf(fpout, "        }\n    ]\n}");
+    fclose(fpout);
+  }
 
   if (group) {
     group->assign(master_group + " delete");
@@ -634,6 +886,9 @@ let's add an internal nve/limit fix for relaxation of reaction sites
 also let's add our per-atom property fix here!
 this per-atom property will state the timestep an atom was 'limited'
 it will have the name 'i_limit_tags' and will be intitialized to 0 (not in group)
+'i_react_tags' holds reaction ID for reacting atoms
+'i_rxn_instance' is unique tag for each ongoing reaction. use first initiator atom ID!
+'i_statted_tags' is 1 for non-reacting atoms
 ------------------------------------------------------------------------- */
 
 void FixBondReact::post_constructor()
@@ -641,7 +896,7 @@ void FixBondReact::post_constructor()
   // let's add the limit_tags per-atom property fix
   id_fix2 = "bond_react_props_internal";
   if (!modify->get_fix_by_id(id_fix2))
-    fix2 = modify->add_fix(id_fix2 + " all property/atom i_limit_tags i_react_tags ghost yes");
+    fix2 = modify->add_fix(id_fix2 + " all property/atom i_limit_tags i_react_tags i_rxn_instance ghost yes");
 
   // create master_group if not already existing
   // NOTE: limit_tags and react_tags automaticaly intitialized to zero (unless read from restart)
@@ -1445,7 +1700,6 @@ void FixBondReact::make_a_guess(Superimpose &super, Reaction &rxn)
 {
   Superimpose::StatePoint &sp = super.sp;
   int &avail_guesses = super.avail_guesses;
-  std::vector<int> &guess_branch = super.guess_branch;
 
   int *type = atom->type;
   int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
@@ -1550,8 +1804,6 @@ void FixBondReact::make_a_guess(Superimpose &super, Reaction &rxn)
 void FixBondReact::neighbor_loop(Superimpose &super, Reaction &rxn)
 {
   Superimpose::StatePoint &sp = super.sp;
-  int &avail_guesses = super.avail_guesses;
-  std::vector<int> &guess_branch = super.guess_branch;
 
   int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
 
@@ -1576,8 +1828,6 @@ void FixBondReact::neighbor_loop(Superimpose &super, Reaction &rxn)
 void FixBondReact::check_a_neighbor(Superimpose &super, Reaction &rxn)
 {
   Superimpose::StatePoint &sp = super.sp;
-  int &avail_guesses = super.avail_guesses;
-  std::vector<int> &guess_branch = super.guess_branch;
 
   int *type = atom->type;
   int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
@@ -1687,7 +1937,6 @@ void FixBondReact::crosscheck_the_neighbor(Superimpose &super, Reaction &rxn)
 {
   Superimpose::StatePoint &sp = super.sp;
   int &avail_guesses = super.avail_guesses;
-  std::vector<int> &guess_branch = super.guess_branch;
 
   int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
 
@@ -2096,7 +2345,6 @@ compute local temperature: average over all atoms in reaction template
 
 double FixBondReact::get_temperature(std::vector<tagint> &glove)
 {
-  int i,ilocal;
   double adof = domain->dimension;
 
   double **v = atom->v;
@@ -2107,14 +2355,14 @@ double FixBondReact::get_temperature(std::vector<tagint> &glove)
   double t = 0.0;
 
   if (rmass) {
-    for (i = 0; i < glove.size(); i++) {
-      ilocal = atom->map(glove[i]);
+    for (const auto &g : glove) {
+      auto ilocal = atom->map(g);
       t += (v[ilocal][0]*v[ilocal][0] + v[ilocal][1]*v[ilocal][1] +
             v[ilocal][2]*v[ilocal][2]) * rmass[ilocal];
     }
   } else {
-    for (i = 0; i < glove.size(); i++) {
-      ilocal = atom->map(glove[i]);
+    for (const auto &g : glove) {
+      auto ilocal = atom->map(g);
       t += (v[ilocal][0]*v[ilocal][0] + v[ilocal][1]*v[ilocal][1] +
             v[ilocal][2]*v[ilocal][2]) * mass[type[ilocal]];
     }
@@ -2730,6 +2978,9 @@ void FixBondReact::unlimit_bond()
   int index3 = atom->find_custom("react_tags",flag,cols);
   int *i_react_tags = atom->ivector[index3];
 
+  int index4 = atom->find_custom("rxn_instance",flag,cols);
+  int *i_rxn_instance = atom->ivector[index4];
+
   int unlimitflag = 0;
   for (int i = 0; i < atom->nlocal; i++) {
     // unlimit atoms for next step! this resolves # of procs disparity, mostly
@@ -2739,6 +2990,7 @@ void FixBondReact::unlimit_bond()
       i_limit_tags[i] = 0;
       if (stabilization_flag == 1) i_statted_tags[i] = 1;
       i_react_tags[i] = 0;
+      i_rxn_instance[i] = 0;
     }
   }
 
@@ -2933,6 +3185,9 @@ void FixBondReact::update_everything()
   int index3 = atom->find_custom("react_tags",flag,cols);
   int *i_react_tags = atom->ivector[index3];
 
+  int index4 = atom->find_custom("rxn_instance",flag,cols);
+  int *i_rxn_instance = atom->ivector[index4];
+
   // pass through twice
   // redefining 'update_num_mega' and 'update_mega_glove' each time
   //  first pass: when glove is all local atoms
@@ -2951,7 +3206,7 @@ void FixBondReact::update_everything()
   for (int pass = 0; pass < 2; pass++) {
     update_num_mega = 0;
     int *noccur = new int[rxns.size()];
-    for (int i = 0; i < rxns.size(); i++) noccur[i] = 0;
+    for (std::size_t i = 0; i < rxns.size(); i++) noccur[i] = 0;
     if (pass == 0) {
       for (int i = 0; i < local_num_mega; i++) {
         auto &rxn = rxns[(int) local_mega_glove[0][i]];
@@ -3144,6 +3399,7 @@ void FixBondReact::update_everything()
           i_limit_tags[ilocal] = update->ntimestep + 1;
           if (stabilization_flag == 1) i_statted_tags[ilocal] = 0;
           i_react_tags[ilocal] = rxn.ID;
+          i_rxn_instance[ilocal] = update_mega_glove[rxn.ibonding+1][i];
 
           if (rxn.atoms[j].landlocked == 1)
             type[ilocal] = rxn.product->type[j];
@@ -3565,6 +3821,34 @@ void FixBondReact::update_everything()
       }
     }
 
+  }
+
+  // currently dumping each reaction once, on step that reaction occurs
+  if (outflag) {
+    std::string indent;
+    int json_level = 2, tab = 4;
+    if (comm->me == 0) {
+      indent.resize(json_level*tab, ' ');
+      if (json_init > 0) {
+        fprintf(fpout, "%s},\n%s{\n", indent.c_str(), indent.c_str());
+      } else {
+        fprintf(fpout, "%s{\n", indent.c_str());
+        json_init = 1;
+      }
+      indent.resize(++json_level*tab, ' ');
+      utils::print(fpout, "{}\"timestep\": {},\n", indent, update->ntimestep);
+      utils::print(fpout, "{}\"molecules\": [\n", indent);
+      indent.resize(++json_level*tab, ' ');
+    }
+
+    rxn_metadata->ivec = i_react_tags;
+    output->write_molecule_json(fpout, json_level, json_init, i_rxn_instance, rxn_metadata.get());
+    if (json_init == 1) json_init++;
+    if (comm->me == 0) {
+      indent.resize(--json_level*tab, ' ');
+      fprintf(fpout, "%s]\n", indent.c_str());
+      fflush(fpout);
+    }
   }
 
   memory->destroy(update_mega_glove);
@@ -4090,15 +4374,18 @@ void FixBondReact::CreateAtoms(char *line, Reaction &rxn, int ncreate)
   for (int i = 0; i < ncreate; i++) {
     readline(line);
     rv = sscanf(line,"%d",&tmp);
-    if (rv != 1) error->one(FLERR, "CreateIDs section is incorrectly formatted");
+    if (rv != 1) error->one(FLERR, Error::NOLASTLINE, "CreateIDs section is incorrectly formatted");
     if (tmp > rxn.product->natoms)
-      error->one(FLERR,"Fix bond/react: Invalid atom ID in CreateIDs section of map file");
+      error->one(FLERR, Error::NOLASTLINE, "Fix bond/react: Invalid atom ID in CreateIDs section of map file");
     rxn.atoms[tmp-1].created = 1;
   }
   if (rxn.product->xflag == 0)
-    error->one(FLERR,"Fix bond/react: 'Coords' section required in post-reaction template when creating new atoms");
+    error->one(FLERR, Error::NOLASTLINE,
+               "Fix bond/react: 'Coords' section required in post-reaction template when creating new atoms");
   if (atom->rmass_flag && !rxn.product->rmassflag)
-    error->one(FLERR, "Fix bond/react: 'Masses' section required in post-reaction template when creating new atoms if per-atom masses are defined.");
+    error->one(FLERR, Error::NOLASTLINE,
+               "Fix bond/react: 'Masses' section required in post-reaction template when creating new atoms "
+               "and per-atom masses are defined.");
 }
 
 void FixBondReact::CustomCharges(int ifragment, Reaction &rxn)
@@ -4149,11 +4436,18 @@ void FixBondReact::ReadConstraints(char *line, Reaction &rxn)
   int rv;
   double tmp[MAXCONARGS];
   char **strargs,*ptr,*lptr;
+  std::stringstream jsonline(line);
   memory->create(strargs,MAXCONARGS,MAXLINE,"bond/react:strargs");
   auto *constraint_type = new char[MAXLINE];
   rxn.constraintstr = "("; // string for boolean constraint logic
   for (auto &constraint : rxn.constraints) {
-    readline(line);
+    if (!utils::strmatch(rxn.mapfilename, "\\.json$")) readline(line);
+    else {
+      std::string tmpline;
+      std::getline(jsonline, tmpline);
+      line = strdup(tmpline.c_str());
+    }
+
     // find left parentheses, add to constraintstr, and update line
     for (int j = 0; j < (int)strlen(line); j++) {
       if (line[j] == '(') rxn.constraintstr += "(";
@@ -4183,7 +4477,7 @@ void FixBondReact::ReadConstraints(char *line, Reaction &rxn)
     } else if ((ptr = strstr(lptr,"||"))) {
       rxn.constraintstr += "||";
       *ptr = '\0';
-    } else if (constraint.ID+1 < rxn.constraints.size()) {
+    } else if (constraint.ID+1 < (int)rxn.constraints.size()) {
       rxn.constraintstr += "&&";
     }
     if ((ptr = strchr(lptr,')')))
@@ -4341,6 +4635,13 @@ double FixBondReact::compute_vector(int n)
 
 /* ---------------------------------------------------------------------- */
 
+std::string FixBondReact::get_thermo_colname(int n)
+{
+  return fmt::format("f_{}:{}", id, rxns[n].name);
+}
+
+/* ---------------------------------------------------------------------- */
+
 void FixBondReact::post_integrate_respa(int ilevel, int /*iloop*/)
 {
   if (ilevel == nlevels_respa-1) post_integrate();
@@ -4473,7 +4774,7 @@ void FixBondReact::write_restart(FILE *fp)
   set[0].nrxns = rxns.size();
   set[0].nratelimits = rate_limits.size();
 
-  for (int i = 0; i < rxns.size(); i++) {
+  for (std::size_t i = 0; i < rxns.size(); i++) {
     set[i].reaction_count_total = rxns[i].reaction_count_total;
 
     strncpy(set[i].rxn_name,rxns[i].name.c_str(),MAXNAME-1);
@@ -4483,7 +4784,7 @@ void FixBondReact::write_restart(FILE *fp)
   // to store, for each RateLimit: Nrxns rxn_IDs[Nrxns] NSteps store_rxn_counts[Nsteps]
   // NOTE: rxn_IDs only valid in reference to this restart file's reaction list
   int rbufcount = rate_limits.size()*2;
-  for (auto rlm : rate_limits)
+  for (const auto &rlm : rate_limits)
     rbufcount += rlm.Nsteps + rlm.Nrxns;
 
   int ii = 0;
@@ -4530,7 +4831,7 @@ void FixBondReact::restart(char *buf)
   iptr += sizeof(Set)*r_nrxns;
 
   for (int i = 0; i < r_nrxns; i++)
-    for (int j = 0; j < rxns.size(); j++)
+    for (std::size_t j = 0; j < rxns.size(); j++)
       if (strcmp(set_restart[i].rxn_name,rxns[j].name.c_str()) == 0)
         rxns[j].reaction_count_total = set_restart[i].reaction_count_total;
 
@@ -4550,11 +4851,11 @@ void FixBondReact::restart(char *buf)
       for (int i = 0; i < r_rlm.Nrxns; i++) {
         r_rlm.rxnIDs.push_back(ibuf[ii++]);
         std::string myrxn_name = set_restart[r_rlm.rxnIDs[i]].rxn_name;
-        r_rlm.rxn_names.push_back(myrxn_name);
+        r_rlm.rxn_names.push_back(std::move(myrxn_name));
       }
       r_rlm.Nsteps = ibuf[ii++];
       for (int i = 0; i < r_rlm.Nsteps; i++) r_rlm.store_rxn_counts.push_back(ibuf[ii++]);
-      restart_rate_limits.push_back(r_rlm);
+      restart_rate_limits.push_back(std::move(r_rlm));
     }
     // restore rate_limits store_rxn_counts if all rxn_names match
     // assumes there are no repeats - perhaps should error-check this?

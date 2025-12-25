@@ -40,14 +40,13 @@ class FixEfieldKokkos : public FixEfield {
  public:
   typedef DeviceType device_type;
   typedef ArrayTypes<DeviceType> AT;
+  typedef double value_type[];
+  const int value_count = 10;
 
   FixEfieldKokkos(class LAMMPS *, int, char **);
   ~FixEfieldKokkos() override;
   void init() override;
   void post_force(int) override;
-
-  typedef double value_type[];
-  const int value_count = 10;
 
   template<int QFLAG, int MUFLAG>
   KOKKOS_INLINE_FUNCTION
@@ -67,7 +66,7 @@ class FixEfieldKokkos : public FixEfield {
   typename AT::t_kkfloat_1d_randomread d_q;
   typename AT::t_kkfloat_1d_4_randomread d_mu;
   typename AT::t_kkacc_1d_3 d_f;
-  typename AT::t_kkfloat_1d_3 d_torque;
+  typename AT::t_kkacc_1d_3 d_torque;
   typename AT::t_imageint_1d_randomread d_image;
   typename AT::t_int_1d_randomread d_mask;
 
