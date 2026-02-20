@@ -19,21 +19,20 @@
 
 #include "comm.h"
 #include "error.h"
-#include "math_special.h"
 #include "memory.h"
 #include "tokenizer.h"
 
 #include <algorithm>
 #include <cmath>
+#include <cstring>
+#include <iterator>
 #include <random>
-#include <string>
 #include <unordered_map>
-#include <vector>
+#include <utility>
 
 #include "eapod.h"
 
 using namespace LAMMPS_NS;
-using MathSpecial::powint;
 
 static constexpr int MAXLINE = 1024;
 static constexpr double SMALL = 1.0e-10;
@@ -449,7 +448,7 @@ void FitPOD::get_exyz_files(std::vector<std::string> &files, std::vector<std::st
   std::sort(allfiles.begin(), allfiles.end());
   for (const auto &fname : allfiles) {
     if (utils::strmatch(fname, fmt::format(".*\\.{}$", extension))) {
-      files.push_back(datapath + platform::filepathsep + fname);
+      files.push_back(datapath + platform::filepathsep + fname); // NOLINT
       int start_pos_erase = fname.find(extension) - 1;
       std::string substr = fname.substr(0, start_pos_erase);
       group_names.push_back(substr);
@@ -522,7 +521,7 @@ int FitPOD::get_number_atoms(std::vector<int> &num_atom, std::vector<int> &num_a
   }
 
   int num_atom_all = 0;
-  for (int i = 0; i < (int) num_atom.size(); i++) num_atom_all += num_atom[i];
+  for (auto i : num_atom) num_atom_all += i;
 
   return num_atom_all;
 }
@@ -585,7 +584,7 @@ void FitPOD::read_exyz_file(double *lattice, double *stress, double *energy, dou
 
       int index = std::distance(words.begin(), it);
 
-      if (words[index].find("=") != std::string::npos) {
+      if (words[index].find('=') != std::string::npos) {
 
         // lattice numbers start at index + 1
 
@@ -613,11 +612,11 @@ void FitPOD::read_exyz_file(double *lattice, double *stress, double *energy, dou
 
         index = std::distance(words.begin(), it);
 
-        if (words[index].find("=") != std::string::npos) {
+        if (words[index].find('=') != std::string::npos) {
 
           // energy is after "=" inside this string
 
-          std::size_t found = words[index].find("=");
+          std::size_t found = words[index].find('=');
           energy[cfi] = utils::numeric(FLERR, words[index].substr(found + 1), false, lmp);
         } else {
 
@@ -637,7 +636,7 @@ void FitPOD::read_exyz_file(double *lattice, double *stress, double *energy, dou
         index = std::distance(words.begin(), it);
 
         if (index < std::distance(words.begin(), words.end())) {
-          if (words[index].find("=") != std::string::npos) {
+          if (words[index].find('=') != std::string::npos) {
 
             // stress numbers start at index + 1
 
@@ -757,13 +756,13 @@ void FitPOD::get_data(datastruct &data, const std::vector<std::string> &species)
   }
 
   int len = data.num_atom.size();
-  data.num_atom_min = podArrayMin(&data.num_atom[0], len);
-  data.num_atom_max = podArrayMax(&data.num_atom[0], len);
+  data.num_atom_min = podArrayMin(data.num_atom.data(), len);
+  data.num_atom_max = podArrayMax(data.num_atom.data(), len);
   data.num_atom_cumsum.resize(len + 1);
-  podCumsum(&data.num_atom_cumsum[0], &data.num_atom[0], len + 1);
+  podCumsum(data.num_atom_cumsum.data(), data.num_atom.data(), len + 1);
 
   data.num_config_cumsum.resize(nfiles + 1);
-  podCumsum(&data.num_config_cumsum[0], &data.num_config[0], nfiles + 1);
+  podCumsum(data.num_config_cumsum.data(), data.num_config.data(), nfiles + 1);
 
   // convert all structures to triclinic system
 
@@ -797,9 +796,9 @@ std::vector<int> FitPOD::linspace(int start_in, int end_in, int num_in)
 
   std::vector<int> linspaced;
 
-  double start = static_cast<double>(start_in);
-  double end = static_cast<double>(end_in);
-  double num = static_cast<double>(num_in);
+  auto start = static_cast<double>(start_in);
+  auto end = static_cast<double>(end_in);
+  auto num = static_cast<double>(num_in);
 
   int elm;
 
@@ -889,12 +888,12 @@ void FitPOD::select_data(datastruct &newdata, const datastruct &data)
     newdata.num_atom_each_file[file] = num_atom_sum;
   }
   int len = newdata.num_atom.size();
-  newdata.num_atom_min = podArrayMin(&newdata.num_atom[0], len);
-  newdata.num_atom_max = podArrayMax(&newdata.num_atom[0], len);
+  newdata.num_atom_min = podArrayMin(newdata.num_atom.data(), len);
+  newdata.num_atom_max = podArrayMax(newdata.num_atom.data(), len);
   newdata.num_atom_cumsum.resize(len + 1);
-  podCumsum(&newdata.num_atom_cumsum[0], &newdata.num_atom[0], len + 1);
+  podCumsum(newdata.num_atom_cumsum.data(), newdata.num_atom.data(), len + 1);
   newdata.num_atom_sum = newdata.num_atom_cumsum[len];
-  podCumsum(&newdata.num_config_cumsum[0], &newdata.num_config[0], nfiles + 1);
+  podCumsum(newdata.num_config_cumsum.data(), newdata.num_config.data(), nfiles + 1);
   newdata.num_config_sum = newdata.num_atom.size();
 
   int n = newdata.num_config_sum;
@@ -1692,7 +1691,7 @@ void FitPOD::least_squares_fit(const datastruct &data)
   fastpodptr->mknewcoeff(desc.c, nCoeffAll);
 }
 
-double latticevolume(double *lattice)
+static double latticevolume(double *lattice)
 {
   double *v1 = &lattice[0];
   double *v2 = &lattice[3];
@@ -1882,8 +1881,8 @@ void FitPOD::error_analysis(const datastruct &data, double *coeff)
     }
   }
 
-  MPI_Allreduce(MPI_IN_PLACE, &outarray[0], m * num_configs, MPI_DOUBLE, MPI_SUM, world);
-  MPI_Allreduce(MPI_IN_PLACE, &ssrarray[0], num_configs, MPI_DOUBLE, MPI_SUM, world);
+  MPI_Allreduce(MPI_IN_PLACE, outarray.data(), m * num_configs, MPI_DOUBLE, MPI_SUM, world);
+  MPI_Allreduce(MPI_IN_PLACE, ssrarray.data(), num_configs, MPI_DOUBLE, MPI_SUM, world);
 
   ci = 0;    // configuration counter
   int nc = 0, nf = 0;
@@ -2225,7 +2224,7 @@ void FitPOD::KmeansClustering(double *points, double *centroids, int *assignment
   }
 }
 
-void FitPOD::savematrix2binfile(std::string filename, double *A, int nrows, int ncols)
+void FitPOD::savematrix2binfile(const std::string &filename, double *A, int nrows, int ncols)
 {
   FILE *fp = fopen(filename.c_str(), "wb");
   double sz[2];
@@ -2236,7 +2235,7 @@ void FitPOD::savematrix2binfile(std::string filename, double *A, int nrows, int 
   fclose(fp);
 }
 
-void FitPOD::saveintmatrix2binfile(std::string filename, int *A, int nrows, int ncols)
+void FitPOD::saveintmatrix2binfile(const std::string &filename, int *A, int nrows, int ncols)
 {
   FILE *fp = fopen(filename.c_str(), "wb");
   int sz[2];
@@ -2247,8 +2246,8 @@ void FitPOD::saveintmatrix2binfile(std::string filename, int *A, int nrows, int 
   fclose(fp);
 }
 
-void FitPOD::savedata2textfile(std::string filename, std::string text, double *A, int n, int m,
-                               int dim)
+void FitPOD::savedata2textfile(const std::string &filename, const std::string &text, double *A,
+                               int n, int m, int dim)
 {
   if (comm->me == 0) {
     int precision = 15;

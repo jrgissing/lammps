@@ -27,7 +27,6 @@
 ------------------------------------------------------------------------- */
 
 #include "fix_colvars.h"
-#include "inthash.h"
 
 #include "atom.h"
 #include "citeme.h"
@@ -39,14 +38,17 @@
 #include "modify.h"
 #include "output.h"
 #include "respa.h"
+#if defined(COLVARS_MPI)
 #include "universe.h"
+#endif
 #include "update.h"
 
 #include "colvarmodule.h"
-#include "colvarproxy.h"
 #include "colvarproxy_lammps.h"
 #include "colvars_memstream.h"
 #include "colvarscript.h"
+
+#include <cstring>
 
 /* struct for packed data communication of coordinates and forces. */
 struct LAMMPS_NS::commdata {
@@ -58,7 +60,6 @@ struct LAMMPS_NS::commdata {
 
 using namespace LAMMPS_NS;
 using namespace FixConst;
-using namespace IntHash_NS;
 
 // initialize static class members
 int FixColvars::instances = 0;
@@ -119,7 +120,6 @@ FixColvars::FixColvars(LAMMPS *lmp, int narg, char **arg) :
   comm_buf = nullptr;
   taglist = nullptr;
   force_buf = nullptr;
-  idmap = nullptr;
 
   script_args[0] = reinterpret_cast<unsigned char *>(utils::strdup("fix_modify"));
 
@@ -224,11 +224,6 @@ FixColvars::~FixColvars()
 
   if (proxy) delete proxy;
 
-  if (idmap) {
-    inthash_destroy(idmap);
-    delete idmap;
-  }
-
   if (root2root != MPI_COMM_NULL)
     MPI_Comm_free(&root2root);
 
@@ -267,6 +262,7 @@ void FixColvars::init()
   if (init_flag) return;
   init_flag = 1;
 
+#if defined(COLVARS_MPI)
   if (universe->nworlds > 1) {
     // create inter root communicator
     int color = 1;
@@ -275,9 +271,10 @@ void FixColvars::init()
     }
     MPI_Comm_split(universe->uworld, color, universe->iworld, &root2root);
     if (me == 0) {
-      proxy->set_replicas_communicator(root2root);
+      proxy->set_replicas_mpi_communicator(root2root);
     }
   }
+#endif
 }
 
 
@@ -291,7 +288,7 @@ void FixColvars::set_thermostat_temperature()
           error->one(FLERR, "Could not find thermostat fix ID {}", tfix_name);
         }
         int tmp = 0;
-        double *tt = reinterpret_cast<double *>(tstat_fix->extract("t_target", tmp));
+        auto *tt = reinterpret_cast<double *>(tstat_fix->extract("t_target", tmp));
         if (tt) {
           t_target = *tt;
         } else {
@@ -344,16 +341,11 @@ void FixColvars::init_taglist()
 
     std::vector<int> const &tl = *(proxy->get_atom_ids());
 
-    if (idmap) {
-      delete idmap;
-      idmap = nullptr;
-    }
-
-    idmap = new inthash_t;
-    inthash_init(idmap, num_coords);
+    idmap.clear();
+    idmap.reserve(num_coords);
     for (int i = 0; i < num_coords; ++i) {
       taglist[i] = tl[i];
-      inthash_insert(idmap, tl[i], i);
+      idmap[tl[i]] = i;
     }
   }
 
@@ -453,7 +445,8 @@ void FixColvars::setup(int vflag)
 {
   const tagint * const tag  = atom->tag;
   const int * const type = atom->type;
-  int i,nme,tmp,ndata;
+  int i,nme,ndata;
+  int tmp = 0;
   const auto nlocal = atom->nlocal;
   const auto me = comm->me;
 
@@ -490,7 +483,6 @@ void FixColvars::setup(int vflag)
 
   if (me == 0) {
 
-    std::vector<int>     const &id = *(proxy->get_atom_ids());
     std::vector<int>           &tp = *(proxy->modify_atom_types());
     std::vector<cvm::atom_pos> &cd = *(proxy->modify_atom_positions());
     std::vector<cvm::rvector>  &of = *(proxy->modify_atom_total_forces());
@@ -541,10 +533,9 @@ void FixColvars::setup(int vflag)
       ndata /= size_one;
 
       for (int k=0; k<ndata; ++k) {
-
-        const int j = inthash_lookup(idmap, comm_buf[k].tag);
-
-        if (j != HASH_FAIL) {
+        auto search = idmap.find(comm_buf[k].tag);
+        if (search != idmap.end()) {
+          const int j = search->second;
 
           tp[j] = comm_buf[k].type;
 
@@ -659,7 +650,8 @@ void FixColvars::post_force(int /*vflag*/)
 
   MPI_Status status;
   MPI_Request request;
-  int tmp, ndata;
+  int tmp = 0;
+  int ndata =0;
 
   if (me == 0) {
 
@@ -697,8 +689,10 @@ void FixColvars::post_force(int /*vflag*/)
       ndata /= size_one;
 
       for (int k=0; k<ndata; ++k) {
-        const int j = inthash_lookup(idmap, comm_buf[k].tag);
-        if (j != HASH_FAIL) {
+        auto search = idmap.find(comm_buf[k].tag);
+        if (search != idmap.end()) {
+          const int j = search->second;
+
           cd[j].x = comm_buf[k].x;
           cd[j].y = comm_buf[k].y;
           cd[j].z = comm_buf[k].z;
@@ -811,7 +805,8 @@ void FixColvars::end_of_step()
 
     MPI_Status status;
     MPI_Request request;
-    int tmp, ndata;
+    int tmp = 0;
+    int ndata = 0;
 
     if (comm->me == 0) {
 
@@ -822,8 +817,10 @@ void FixColvars::end_of_step()
         const tagint k = atom->map(taglist[i]);
         if ((k >= 0) && (k < nlocal)) {
 
-          const int j = inthash_lookup(idmap, tag[k]);
-          if (j != HASH_FAIL) {
+          auto search = idmap.find(tag[k]);
+          if (search != idmap.end()) {
+            const int j = search->second;
+
             of[j].x = f[k][0];
             of[j].y = f[k][1];
             of[j].z = f[k][2];
@@ -841,8 +838,10 @@ void FixColvars::end_of_step()
         ndata /= size_one;
 
         for (int k=0; k<ndata; ++k) {
-          const int j = inthash_lookup(idmap, comm_buf[k].tag);
-          if (j != HASH_FAIL) {
+          auto search = idmap.find(comm_buf[k].tag);
+          if (search != idmap.end()) {
+            const int j = search->second;
+
             of[j].x = comm_buf[k].x;
             of[j].y = comm_buf[k].y;
             of[j].z = comm_buf[k].z;
@@ -896,7 +895,7 @@ void FixColvars::restart(char *buf)
   if (comm->me == 0) {
     // Read the buffer's length, then load it into Colvars starting right past that location
     int length = *(reinterpret_cast<int *>(buf));
-    unsigned char *colvars_state_buffer = reinterpret_cast<unsigned char *>(buf + sizeof(int));
+    auto *colvars_state_buffer = reinterpret_cast<unsigned char *>(buf + sizeof(int));
     if (proxy->colvars->set_input_state_buffer(length, colvars_state_buffer) != COLVARS_OK) {
       error->all(FLERR, "Failed to set the Colvars input state from string buffer");
     }
@@ -926,7 +925,7 @@ double FixColvars::compute_scalar()
 /* local memory usage. approximately. */
 double FixColvars::memory_usage()
 {
-  double bytes = (double) (num_coords * (2*sizeof(int)+3*sizeof(double)));
-  bytes += (double)(double) (nmax*size_one) + sizeof(this);
+  auto bytes = (double) (num_coords * (2*sizeof(int)+3*sizeof(double)));
+  bytes += (double) (nmax*size_one) + sizeof(*this);
   return bytes;
 }

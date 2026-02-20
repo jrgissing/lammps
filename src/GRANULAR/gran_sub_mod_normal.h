@@ -28,8 +28,8 @@ GranSubModStyle(mdr,GranSubModNormalMDR,NORMAL);
 
 #include "gran_sub_mod.h"
 
-namespace LAMMPS_NS {
-namespace Granular_NS {
+
+namespace LAMMPS_NS::Granular_NS {
 
   class GranSubModNormal : public GranSubMod {
    public:
@@ -39,12 +39,12 @@ namespace Granular_NS {
     virtual double calculate_contact_radius();
     virtual double calculate_forces() = 0;
 
-    int get_cohesive_flag() const { return cohesive_flag; }
-    double get_damp() const { return damp; }
-    double get_emod() const { return Emod; }
-    double get_fncrit() const { return Fncrit; }
-    int get_material_properties() const { return material_properties; }
-    double get_poiss() const { return poiss; }
+    [[nodiscard]] int get_cohesive_flag() const { return cohesive_flag; }
+    [[nodiscard]] double get_damp() const { return damp; }
+    [[nodiscard]] double get_emod() const { return Emod; }
+    [[nodiscard]] double get_fncrit() const { return Fncrit; }
+    [[nodiscard]] int get_material_properties() const { return material_properties; }
+    [[nodiscard]] double get_poiss() const { return poiss; }
 
     virtual void set_fncrit();
 
@@ -143,11 +143,11 @@ namespace Granular_NS {
     void coeffs_to_local() override;
     void init() override;
     double calculate_forces() override;
-    double E, nu, Y, gamma, CoR, psi_b; // specified coeffs
+    double Y, gamma, psi_b; // specified coeffs
 
    protected:
     double G, kappa, Eeff; // derived coeffs
-    double Eeffsq, Eeffinv, Eeffsqinv;
+    double Eeffsq, Eeffinv, Eeffsqinv, Eeff2particle;
     double gammasq, gamma3, gamma4;
 
     int warn_flag;
@@ -155,6 +155,7 @@ namespace Granular_NS {
     int index_Ro, index_Vgeo, index_Velas, index_Vcaps, index_eps_bar, index_dRnumerator;
     int index_dRdenominator, index_Acon0, index_Acon1, index_Atot, index_Atot_sum, index_ddelta_bar;
     int index_psi, index_sigmaxx, index_sigmayy, index_sigmazz, index_contacts, index_adhesive_length;
+    int index_dRavg;
     int fix_mdr_flag;
 
     char *id_fix;
@@ -163,8 +164,8 @@ namespace Granular_NS {
     inline double round_up_negative_epsilon(double);
   };
 
-}    // namespace Granular_NS
-}    // namespace LAMMPS_NS
+} // namespace LAMMPS_NS::Granular_NS
+
 
 #endif /*GRAN_SUB_MOD_NORMAL_H */
 #endif /*GRAN_SUB_MOD_CLASS_H */
