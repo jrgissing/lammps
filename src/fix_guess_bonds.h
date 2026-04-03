@@ -29,28 +29,13 @@ class FixGuessBonds : public Fix {
   FixGuessBonds(class LAMMPS *, int, char **);
   //~FixGuessBonds() override;
   int setmask() override;
-  void init() override;
-  void setup(int) override;
-  void min_setup(int) override;
-  void post_force(int) override;
-  void post_force_respa(int, int, int) override;
-  void min_post_force(int) override;
-  int pack_forward_comm(int, int *, double *, int, int *) override;
-  void unpack_forward_comm(int, int, double *) override;
+  void end_of_step() override;
 
  private:
   double prefactor;
   std::vector<double> radii;
   std::vector<std::vector<double>> cutsq;
-  int maxlocal;        // size of atom selection and variable arrays
-  int nchoose;         // # of selected atoms
-  double *buf;         // memory for atom quantities
-  int *choose;         // local indices of selected atoms
-  int *clist;          // compressed list of indices of selected atoms
-  int *chooseghost;    // extended choose array for comm
-  double **bufcopy;    // buffer for communicating bond/atom info
-  int maxbufcopy;
-  int nlevels_respa;
+  class ComputeGuessBonds *cgb;
 };
 
 }    // namespace LAMMPS_NS
