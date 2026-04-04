@@ -177,6 +177,7 @@ void ComputeGuessBonds::compute_peratom()
   }
   for (i = 0; i < nlocal; i++) chooseghost[i] = choose[i];
 
+  comm_forward = 1;
   comm->forward_comm(this);
 
   // mostly borrowed from fix graphics autobond
