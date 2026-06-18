@@ -23,6 +23,7 @@
 #include "atom_vec.h"
 #include "citeme.h"
 #include "comm.h"
+//#include "compute.h"
 #include "domain.h"
 #include "error.h"
 #include "fix_ave_atom.h"
@@ -39,6 +40,7 @@
 #include "variable.h"
 
 #include "pair_reaxff.h"
+#include "reaxff_api.h"
 #include "reaxff_defs.h"
 
 #include <algorithm>
@@ -286,6 +288,24 @@ FixReaxFFSpecies::FixReaxFFSpecies(LAMMPS *lmp, int narg, char **arg) :
       iarg += 2;
 
       // position of molecules
+    } else if (strcmp(arg[iarg], "delete_valency") == 0) {
+      if (iarg + ntypes + 1 > narg)
+        utils::missing_cmd_args(FLERR, "fix reaxff/species delete_valency", error);
+
+      delete_valency_bo_cut = utils::numeric(FLERR, arg[iarg + 1], false, lmp);
+
+      delete_valency.resize(ntypes);
+      for (int i = 0; i < ntypes; i++) delete_valency[i] = utils::numeric(FLERR, arg[iarg + 2 + i], false, lmp);
+      iarg += ntypes + 2;
+
+      //std::vector<Compute *> matches = modify->get_compute_by_style("reaxff/atom");
+      //if (matches.size() > 0) {
+      //  reaxff_atom = matches[0];
+      //} else {
+      //  reaxff_atom = modify->add_compute(fmt::format("compute {}_REAXFF_ATOM all reaxff/atom", id));
+      //}
+      //reaxff_atom->init();
+
     } else if (strcmp(arg[iarg], "position") == 0) {
       if (iarg + 3 > narg) utils::missing_cmd_args(FLERR, "fix reaxff/species position", error);
       posflag = 1;
@@ -1043,9 +1063,33 @@ void FixReaxFFSpecies::DeleteSpecies(int Nmole, int Nspec)
     MPI_Bcast(&molrange[0], Nmole, MPI_INT, 0, world);
   }
 
+  std::vector<int> molskip(Nmole);
+  int continue_flag;
+  if (delete_valency.size() > 0) {
+    for (int mm = 0; mm < Nmole; mm++) {
+      m = molrange[mm];
+      continue_flag = 0;
+      for (i = 0; i < nlocal; i++) {
+        if (!(mask[i] & groupbit)) continue;
+        cid = std::lround(clusterID[i]);
+        if (cid == m) {
+          double mybo = reaxff->api->workspace->total_bond_order[i];
+          if (std::abs(delete_valency[type[i]-1]-mybo) > delete_valency_bo_cut) {
+            molskip[mm] = 1;
+            continue_flag = 1;
+            break;
+          }
+        }
+      }
+      if (continue_flag == 1) continue;
+    }
+  }
+  MPI_Allreduce(MPI_IN_PLACE, molskip.data(), Nmole, MPI_INT, MPI_MAX, world);
+
   int this_delete_Tcount = 0;
   for (int mm = 0; mm < Nmole; mm++) {
     if (this_delete_Tcount == headroom) break;
+    if (molskip[mm] == 1) continue;
     m = molrange[mm];
     localmass = totalmass = count = nmarklist = 0;
     for (n = 0; n < nutypes; n++) Name[n] = 0;

@@ -69,6 +69,9 @@ class FixReaxFFSpecies : public Fix {
   std::string delete_Nlimit_varname;
   int delete_Nsteps, *delete_Tcount;
   double massmin, massmax;
+  std::vector<double> delete_valency;      // define expected valency for each atom type
+  double delete_valency_bo_cut;
+  //class Compute *reaxff_atom;
   int singlepos_opened, multipos_opened, del_opened;
   char *filepos;
   std::string filedel;
