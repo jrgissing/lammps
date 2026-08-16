@@ -1385,7 +1385,10 @@ void FixBondReact::superimpose_algorithm()
   MPI_Bcast(&delta_rxn[0], rxns.size(), MPI_INT, 0, world);
   MPI_Bcast(&rxnflag, 1, MPI_INT, 0, world);
 
-  if (!rxnflag) return;
+  if (!rxnflag) {
+    memory->destroy(delta_rxn);
+    return;
+  }
 
   // NOLINTBEGIN
   // C++11 and later compatible version of Park pRNG
