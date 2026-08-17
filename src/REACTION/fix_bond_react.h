@@ -25,6 +25,7 @@ FixStyle(bond/react,FixBondReact);
 #define LMP_FIX_BOND_REACT_H
 
 #include "fix.h"
+#include "reaction.h"
 
 #include <array>
 #include <deque>
@@ -67,11 +68,9 @@ class FixBondReact : public Fix {
   static constexpr int MAXGUESS = 20;                      // max # of guesses allowed by superimpose algorithm
   static constexpr int MAXCONARGS = 14;                    // max # of arguments for any type of constraint + rxnID
   static constexpr int MAXLINE = 1024;                     // max length of line read from files
-  static constexpr int MAXNAME = 256;                      // max character length of react-ID
   enum class Status { ACCEPT, REJECT, PROCEED,
                       CONTINUE, GUESSFAIL, RESTORE };      // values for superimpose algorithm status
   enum class Reset_Mol_IDs { YES, NO, MOLMAP };            // values for reset_mol_ids keyword
-  enum class Molecule_Keys { OFF, INTER, INTRA };          // values for molecule_keyword
   enum class Dedup_Modes { LOCAL, GLOBAL };                // flag for one-proc vs shared reaction sites
 
   int newton_bond;
@@ -91,64 +90,6 @@ class FixBondReact : public Fix {
   int atoms2bondflag;                                      // 1 if atoms2bond map has been populated on this timestep
   Status status;
 
-  struct Reaction {
-    int ID;                                                // indexed from 0
-    class Molecule *reactant;                              // pre-reacted molecule template
-    class Molecule *product;                               // post-reacted molecule template
-    std::string name, constraintstr;
-    std::string mapfilename;
-    int nevery, groupbits;
-    int iatomtype, jatomtype;
-    int ibonding, jbonding;
-    int closeneigh;                                        // indicates if bonding atoms of a rxn are 1-2, 1-3, or 1-4 neighbors
-    double rminsq, rmaxsq;
-    double fraction;
-    double mol_total_charge;                               // sum of charges of post-reaction atoms whose charges are updated
-    int reaction_count, reaction_count_total;
-    int local_rxn_count, ghostly_rxn_count;
-    int nlocalkeep, nghostlykeep;
-    int seed, limit_duration;
-    int stabilize_steps_flag;
-    int custom_charges_fragid;
-    int rescale_charges_flag;                              // if nonzero, indicates number of atoms whose charges are updated
-    int create_atoms_flag, modify_create_fragid;
-    double overlapsq;
-    Molecule_Keys molecule_keyword;
-    int v_nevery, v_rmin, v_rmax, v_prob;                  // ID of variable, -1 if static
-    int nnewmolids;                                        // number of unique new molids needed for each reaction
-    std::vector<std::array<tagint, 2>> attempts;           // stores sim atom IDs of initiator atoms
-
-    struct ReactionAtomFlags {
-      int edge;                                            // true if atom in molecule template has incorrect valency
-      int landlocked;                                      // true if atom is at least three bonds away from edge atoms
-      bool wildcard;                                       // true if atom type contains a wildcard
-      int recharged;                                       // true if atom whose charge should be updated
-      int deleted;                                         // true if atom in pre-reacted template to delete
-      int created;                                         // true if atom in post-reacted template to create
-      int newmolid;                                        // for molmap option: mol IDs in post, but not in pre, re-indexed from 1
-      std::array<int, 6> chiral;                           // pre-react chiral atoms. 1) flag 2) orientation 3-4) ordered atom types
-      std::array<int, 2> amap;                             // atom map: clmn 1 = product atom IDs, clmn 2: reactant atom IDs
-      std::array<int, 2> ramap;                            // reverse amap
-    };
-    std::vector<ReactionAtomFlags> atoms;
-
-    struct Constraint {
-      int ID;
-      enum class Type { DISTANCE, ANGLE, DIHEDRAL, ARRHENIUS, RMSD, CUSTOM } type;
-      struct Distance { double rminsq, rmaxsq; } distance;
-      struct Angle { double amin, amax; } angle;
-      struct Dihedral { double amin, amax, amin2, amax2; } dihedral;
-      struct RMSD { double rmsdmax; } rmsd;
-      struct Arrhenius { double A, n, E_a, seed; class RanMars *rrhandom; } arrhenius;
-      struct Custom { std::string str; } custom;
-      enum class IDType { ATOM, FRAG };
-      static constexpr int MAXCONIDS = 4;
-      std::array<int, MAXCONIDS> ids;
-      std::array<IDType, MAXCONIDS> idtypes{};
-      bool satisfied;
-    };
-    std::vector<Constraint> constraints;
-  };
   std::vector<Reaction> rxns;
 
   int ncustomvars;
@@ -216,7 +157,6 @@ class FixBondReact : public Fix {
   std::map<tagint, int> vizatoms;  // maps atom IDs to number of steps they have been highlighted
   int vizsteps;                    // number of steps to highlight atoms in reactions
 
-  void validate_variable_keyword(const char *, int);
   void read_map_file(Reaction &);
   void EdgeIDs(char *, Reaction &, int);
   void Equivalences(char *, Reaction &, int);
