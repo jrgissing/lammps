@@ -146,9 +146,10 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
     error->all(FLERR, Error::NOLASTLINE, "Only one instance of fix bond/react allowed at a time");
 
   // let's find number of reactions specified
+  std::string rxn_keyword = "react";
   int nrxns = 0;
   for (int i = 3; i < narg; i++) {
-    if (strcmp(arg[i],"react") == 0) {
+    if (arg[i] == rxn_keyword) {
       nrxns++;
       i = i + 6; // skip past mandatory arguments
       if (i > narg) utils::missing_cmd_args(FLERR,"fix bond/react react", error);
@@ -266,7 +267,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
         utils::missing_cmd_args(FLERR, std::string("Fix bond/react ") + arg[iarg], error);
       vizsteps = utils::inumeric(FLERR, arg[iarg+1], false, lmp);
       iarg += 2;
-    } else if (strcmp(arg[iarg],"react") == 0) {
+    } else if (arg[iarg] == rxn_keyword) {
       break;
     } else error->all(FLERR, iarg, "Unknown fix bond/react command keyword {}", arg[iarg]);
   }
@@ -304,11 +305,19 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
   }
 
   for (auto &rxn : rxns) {
-    if (strcmp(arg[iarg],"react") != 0) error->all(FLERR,"Illegal fix bond/react command: "
+    if (arg[iarg] != rxn_keyword) error->all(FLERR,"Illegal fix bond/react command: "
                                                    "'react' or 'stabilization' has incorrect arguments");
     iarg++;
 
-    ReactionParser(lmp).parse_reaction(arg, iarg, narg, rxn);
+    int rxn_narg = 0;
+    while (iarg < narg && arg[iarg] != rxn_keyword) {
+      rxn_narg++;
+      iarg++;
+    }
+
+    // input to parse_reaction_parser is one reaction definition (pre/post reaction templates, map file, bond/react keywords)
+
+    ReactionParser(lmp).parse_reaction(arg, iarg-rxn_narg, rxn_narg, rxn);
 
     if (rxn.stabilize_steps_flag == 1 && stabilization_flag == 0)
       error->all(FLERR,"Stabilize_steps keyword used without stabilization keyword");

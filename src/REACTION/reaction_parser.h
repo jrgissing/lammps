@@ -31,8 +31,9 @@ class ReactionParser : protected Pointers {
 public:
   ReactionParser(LAMMPS *lmp) : Pointers(lmp) {}
 
-  void parse_reaction(char **, int &, int, Reaction &);
+  void parse_reaction(char **, int, int, Reaction &);
 
+private:
   void validate_variable_keyword(const char *, int);
 };
 

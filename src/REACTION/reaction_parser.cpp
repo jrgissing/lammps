@@ -27,7 +27,7 @@ Contributing Author: Jacob Gissinger (jgissing@stevens.edu)
 
 using namespace LAMMPS_NS;
 
-void ReactionParser::parse_reaction(char **arg, int &iarg, int narg, Reaction &rxn) {
+void ReactionParser::parse_reaction(char **arg, int iarg, int rxn_narg, Reaction &rxn) {
 
   rxn.name = arg[iarg++];
   if (rxn.name.size()+1 > MAXNAME) error->all(FLERR,"Reaction name (react-ID) is too long (limit: 255 characters)");
@@ -80,9 +80,9 @@ void ReactionParser::parse_reaction(char **arg, int &iarg, int narg, Reaction &r
   rxn.mapfilename = arg[iarg];
   iarg++;
 
-  while (iarg < narg && strcmp(arg[iarg],"react") != 0) {
+  while (iarg < rxn_narg) {
     if (strcmp(arg[iarg],"prob") == 0) {
-      if (iarg+3 > narg) error->all(FLERR,"Illegal fix bond/react command: "
+      if (iarg+3 > rxn_narg) error->all(FLERR,"Illegal fix bond/react command: "
                                     "'prob' keyword has too few arguments");
       // check if probability is a variable
       if (strncmp(arg[iarg+1],"v_",2) == 0) {
@@ -101,13 +101,13 @@ void ReactionParser::parse_reaction(char **arg, int &iarg, int narg, Reaction &r
                                      "probability seed must be positive");
       iarg += 3;
     } else if (strcmp(arg[iarg],"stabilize_steps") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
+      if (iarg+2 > rxn_narg) error->all(FLERR,"Illegal fix bond/react command: "
                                     "'stabilize_steps' has too few arguments");
       rxn.limit_duration = utils::inumeric(FLERR,arg[iarg+1],false,lmp);
       rxn.stabilize_steps_flag = 1;
       iarg += 2;
     } else if (strcmp(arg[iarg],"custom_charges") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
+      if (iarg+2 > rxn_narg) error->all(FLERR,"Illegal fix bond/react command: "
                                     "'custom_charges' has too few arguments");
       if (strcmp(arg[iarg+1],"no") == 0) rxn.custom_charges_fragid = -1; //default
       else {
@@ -117,7 +117,7 @@ void ReactionParser::parse_reaction(char **arg, int &iarg, int narg, Reaction &r
       }
       iarg += 2;
     } else if (strcmp(arg[iarg],"rescale_charges") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
+      if (iarg+2 > rxn_narg) error->all(FLERR,"Illegal fix bond/react command: "
                                     "'rescale_charges' has too few arguments");
       if (strcmp(arg[iarg+1],"no") == 0) rxn.rescale_charges_flag = 0; //default
       else if (strcmp(arg[iarg+1],"yes") == 0) {
@@ -129,7 +129,7 @@ void ReactionParser::parse_reaction(char **arg, int &iarg, int narg, Reaction &r
       } else error->one(FLERR,"Bond/react: Illegal option for 'rescale_charges' keyword");
       iarg += 2;
     } else if (strcmp(arg[iarg],"molecule") == 0) {
-      if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
+      if (iarg+2 > rxn_narg) error->all(FLERR,"Illegal fix bond/react command: "
                                     "'molecule' has too few arguments");
       if (strcmp(arg[iarg+1],"off") == 0) rxn.molecule_keyword = Molecule_Keys::OFF; //default
       else if (strcmp(arg[iarg+1],"inter") == 0) rxn.molecule_keyword = Molecule_Keys::INTER;
@@ -137,11 +137,11 @@ void ReactionParser::parse_reaction(char **arg, int &iarg, int narg, Reaction &r
       else error->one(FLERR,"Fix bond/react: Illegal option for 'molecule' keyword");
       iarg += 2;
     } else if (strcmp(arg[iarg],"modify_create") == 0) {
-      if (iarg++ > narg) error->all(FLERR,"Illegal fix bond/react command: "
+      if (iarg++ > rxn_narg) error->all(FLERR,"Illegal fix bond/react command: "
                                     "'modify_create' has too few arguments");
-      while (iarg < narg && strcmp(arg[iarg],"react") != 0) {
+      while (iarg < rxn_narg && strcmp(arg[iarg],"react") != 0) {
         if (strcmp(arg[iarg],"fit") == 0) {
-          if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
+          if (iarg+2 > rxn_narg) error->all(FLERR,"Illegal fix bond/react command: "
                                         "'modify_create' has too few arguments");
           if (strcmp(arg[iarg+1],"all") == 0) rxn.modify_create_fragid = -1; //default
           else {
@@ -151,7 +151,7 @@ void ReactionParser::parse_reaction(char **arg, int &iarg, int narg, Reaction &r
           }
           iarg += 2;
         } else if (strcmp(arg[iarg],"overlap") == 0) {
-          if (iarg+2 > narg) error->all(FLERR,"Illegal fix bond/react command: "
+          if (iarg+2 > rxn_narg) error->all(FLERR,"Illegal fix bond/react command: "
                                         "'modify_create' has too few arguments");
           rxn.overlapsq = utils::numeric(FLERR,arg[iarg+1],false,lmp);
           rxn.overlapsq *= rxn.overlapsq;
