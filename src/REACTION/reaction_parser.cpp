@@ -29,6 +29,26 @@ using namespace LAMMPS_NS;
 
 void ReactionParser::parse_reaction(char **arg, int iarg, int rxn_narg, Reaction &rxn) {
 
+  // set defaults
+
+  rxn.fraction = 1.0;
+  rxn.seed = 12345;
+  rxn.stabilize_steps_flag = 0;
+  rxn.custom_charges_fragid = -1;
+  rxn.rescale_charges_flag = 0;
+  rxn.create_atoms_flag = 0;
+  rxn.modify_create_fragid = -1;
+  rxn.overlapsq = 0.0;
+  rxn.mol_total_charge = 0.0;
+  rxn.molecule_keyword = Molecule_Keys::OFF;
+  rxn.limit_duration = 60;
+  rxn.reaction_count = 0;
+  rxn.local_rxn_count = 0;
+  rxn.ghostly_rxn_count = 0;
+  rxn.reaction_count_total = 0;
+  rxn.v_rmin = rxn.v_rmax = -1;
+  rxn.v_nevery = rxn.v_prob = -1;
+
   rxn.name = arg[iarg++];
   if (rxn.name.size()+1 > MAXNAME) error->all(FLERR,"Reaction name (react-ID) is too long (limit: 255 characters)");
 
@@ -76,7 +96,7 @@ void ReactionParser::parse_reaction(char **arg, int iarg, int rxn_narg, Reaction
                                          "fix bond/react does not exist");
   rxn.product = atom->molecules[mol_idx];
 
-  //read map file
+  // store map file name
   rxn.mapfilename = arg[iarg];
   iarg++;
 
@@ -165,6 +185,23 @@ void ReactionParser::parse_reaction(char **arg, int iarg, int rxn_narg, Reaction
       error->all(FLERR,"Fix bond/react: 'max_rxn' as an 'individual keyword' has been deprecated. "
                        "Please use the 'max_rxn' common keyword instead, which can be applied to one or more reactions.");
     } else error->all(FLERR,"Illegal fix bond/react command: unknown keyword");
+  }
+
+  // set more defaults
+  rxn.nnewmolids = 0;
+  rxn.atoms.resize(rxn.product->natoms);
+  int idx = 1;
+  for (auto &atm : rxn.atoms) {
+    atm.edge = 0;
+    atm.wildcard = false;
+    atm.recharged = 1; // update all partial charges by default
+    atm.deleted = 0;
+    atm.created = 0;
+    atm.newmolid = 0;
+    atm.chiral.fill(0);
+    // default amap to their own molecule template atom ID
+    // all but created atoms will be updated
+    atm.amap.fill(idx++);
   }
 };
 

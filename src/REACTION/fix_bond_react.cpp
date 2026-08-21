@@ -278,32 +278,9 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
     reset_mol_ids->create_computes(id,group->names[igroup]);
   }
 
-  // set up common variables as vectors of length 'nrxns'
   rxns.resize(nrxns);
-
   rescale_charges_anyflag = 0;
   int id = 0;
-  for (auto &rxn : rxns) {
-    rxn.ID = id++;
-    rxn.fraction = 1.0;
-    rxn.seed = 12345;
-    rxn.stabilize_steps_flag = 0;
-    rxn.custom_charges_fragid = -1;
-    rxn.rescale_charges_flag = 0;
-    rxn.create_atoms_flag = 0;
-    rxn.modify_create_fragid = -1;
-    rxn.overlapsq = 0.0;
-    rxn.mol_total_charge = 0.0;
-    rxn.molecule_keyword = Molecule_Keys::OFF;
-    rxn.limit_duration = 60;
-    rxn.reaction_count = 0;
-    rxn.local_rxn_count = 0;
-    rxn.ghostly_rxn_count = 0;
-    rxn.reaction_count_total = 0;
-    rxn.v_rmin = rxn.v_rmax = -1;
-    rxn.v_nevery = rxn.v_prob = -1;
-  }
-
   for (auto &rxn : rxns) {
     if (arg[iarg] != rxn_keyword) error->all(FLERR,"Illegal fix bond/react command: "
                                                    "'react' or 'stabilization' has incorrect arguments");
@@ -317,6 +294,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
 
     // input to parse_reaction_parser is one reaction definition (pre/post reaction templates, map file, bond/react keywords)
 
+    rxn.ID = id++;
     ReactionParser(lmp).parse_reaction(arg, iarg-rxn_narg, rxn_narg, rxn);
 
     if (rxn.stabilize_steps_flag == 1 && stabilization_flag == 0)
@@ -369,24 +347,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
 
   max_natoms = 0; // the number of atoms in largest molecule template
   for (auto &rxn : rxns) max_natoms = MAX(max_natoms,rxn.product->natoms);
-
-  for (auto &rxn : rxns) {
-    rxn.nnewmolids = 0;
-    rxn.atoms.resize(max_natoms);
-    int idx = 1;
-    for (auto &atm : rxn.atoms) {
-      atm.edge = 0;
-      atm.wildcard = false;
-      atm.recharged = 1; // update all partial charges by default
-      atm.deleted = 0;
-      atm.created = 0;
-      atm.newmolid = 0;
-      atm.chiral.fill(0);
-      // default amap to their own molecule template atom ID
-      // all but created atoms will be updated
-      atm.amap.fill(idx++);
-    }
-  }
+  for (auto &rxn : rxns) rxn.atoms.resize(max_natoms); // adding padding
 
   if (molid_mode == Reset_Mol_IDs::MOLMAP) {
     for (auto &rxn : rxns) {
