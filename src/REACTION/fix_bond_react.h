@@ -161,7 +161,6 @@ class FixBondReact : public Fix {
   void crosscheck_the_neighbor(Superimpose &, Reaction &);
   void inner_crosscheck_loop(Superimpose &, Reaction &);
   bool compare_atomtype(int, Reaction &, int);
-  int ring_check(Reaction &, std::vector<tagint> &);
   int check_constraints(Reaction &, std::vector<tagint> &);
   void get_IDcoords(Reaction::Constraint::IDType, int, double *, Molecule *, std::vector<tagint> &);
   double get_temperature(std::vector<tagint> &);

@@ -16,7 +16,10 @@ Contributing Author: Jacob Gissinger (jgissing@stevens.edu)
 ------------------------------------------------------------------------- */
 
 #include "fix_bond_react.h"
+
 #include "reaction_parser.h"
+#include "topology_matcher.h"
+#include "superpose3d.h"
 
 #include "atom.h"
 #include "atom_vec.h"
@@ -45,7 +48,6 @@ Contributing Author: Jacob Gissinger (jgissing@stevens.edu)
 #include "respa.h"
 #include "update.h"
 #include "variable.h"
-#include "superpose3d.h"
 
 #include <cctype>
 #include <cmath>
@@ -1498,7 +1500,7 @@ void FixBondReact::check_a_neighbor(Superimpose &super, Reaction &rxn)
 
             sp.glove_counter++;
             if (sp.glove_counter == rxn.reactant->natoms) {
-              if (ring_check(rxn, sp.glove) && check_constraints(rxn, sp.glove)) status = Status::ACCEPT;
+              if (TopologyMatcher(lmp).ring_check(rxn, sp.glove) && check_constraints(rxn, sp.glove)) status = Status::ACCEPT;
               else status = Status::GUESSFAIL;
               return;
             }
@@ -1551,7 +1553,7 @@ void FixBondReact::check_a_neighbor(Superimpose &super, Reaction &rxn)
 
         sp.glove_counter++;
         if (sp.glove_counter == rxn.reactant->natoms) {
-          if (ring_check(rxn, sp.glove) && check_constraints(rxn, sp.glove)) status = Status::ACCEPT;
+          if (TopologyMatcher(lmp).ring_check(rxn, sp.glove) && check_constraints(rxn, sp.glove)) status = Status::ACCEPT;
           else status = Status::GUESSFAIL;
           return;
           // will never complete here when there are edge atoms
@@ -1690,7 +1692,7 @@ void FixBondReact::inner_crosscheck_loop(Superimpose &super, Reaction &rxn)
   }
   sp.glove_counter++;
   if (sp.glove_counter == rxn.reactant->natoms) {
-    if (ring_check(rxn, sp.glove) && check_constraints(rxn, sp.glove)) status = Status::ACCEPT;
+    if (TopologyMatcher(lmp).ring_check(rxn, sp.glove) && check_constraints(rxn, sp.glove)) status = Status::ACCEPT;
     else status = Status::GUESSFAIL;
     return;
   }
@@ -1706,39 +1708,6 @@ bool FixBondReact::compare_atomtype(int checktype, Reaction &rxn, int reactant_a
   int iatom = reactant_atom - 1; // index of reactant atom
   if (checktype == rxn.reactant->type[iatom] || rxn.atoms[iatom].wildcard) return true;
   else return false;
-}
-
-/* ----------------------------------------------------------------------
-  Check that newly assigned atoms have correct bonds
-  Necessary for certain ringed structures
-------------------------------------------------------------------------- */
-
-int FixBondReact::ring_check(Reaction &rxn, std::vector<tagint> &glove)
-{
-  // ring_check can be made more efficient by re-introducing 'frozen' atoms
-  // 'frozen' atoms have been assigned and also are no longer pioneers
-
-  // double check the number of neighbors match for all non-edge atoms
-  // otherwise, atoms at 'end' of symmetric ring can behave like edge atoms
-  for (int i = 0; i < rxn.reactant->natoms; i++)
-    if (rxn.atoms[i].edge == 0 &&
-        rxn.reactant->nspecial[i][0] != nxspecial[atom->map(glove[i])][0])
-      return 0;
-
-  for (int i = 0; i < rxn.reactant->natoms; i++) {
-    for (int j = 0; j < rxn.reactant->nspecial[i][0]; j++) {
-      int ring_fail = 1;
-      int ispecial = rxn.reactant->special[i][j];
-      for (int k = 0; k < nxspecial[atom->map(glove[i])][0]; k++) {
-        if (xspecial[atom->map(glove[i])][k] == glove[ispecial-1]) {
-          ring_fail = 0;
-          break;
-        }
-      }
-      if (ring_fail == 1) return 0;
-    }
-  }
-  return 1;
 }
 
 /* ----------------------------------------------------------------------
