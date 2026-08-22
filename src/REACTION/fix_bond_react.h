@@ -66,15 +66,12 @@ class FixBondReact : public Fix {
  private:
   static constexpr double BIG = 1.0e20;
   static constexpr int MAXGUESS = 20;                      // max # of guesses allowed by superimpose algorithm
-  static constexpr int MAXCONARGS = 14;                    // max # of arguments for any type of constraint + rxnID
-  static constexpr int MAXLINE = 1024;                     // max length of line read from files
   enum class Status { ACCEPT, REJECT, PROCEED,
                       CONTINUE, GUESSFAIL, RESTORE };      // values for superimpose algorithm status
   enum class Reset_Mol_IDs { YES, NO, MOLMAP };            // values for reset_mol_ids keyword
   enum class Dedup_Modes { LOCAL, GLOBAL };                // flag for one-proc vs shared reaction sites
 
   int newton_bond;
-  FILE *fp;
   tagint lastcheck;
   FILE *fpout;
   bool outflag;
@@ -157,17 +154,6 @@ class FixBondReact : public Fix {
   std::map<tagint, int> vizatoms;  // maps atom IDs to number of steps they have been highlighted
   int vizsteps;                    // number of steps to highlight atoms in reactions
 
-  void read_map_file(Reaction &);
-  void EdgeIDs(char *, Reaction &, int);
-  void Equivalences(char *, Reaction &, int);
-  void DeleteAtoms(char *, Reaction &, int);
-  void CreateAtoms(char *, Reaction &, int);
-  void CustomCharges(int, Reaction &);
-  void ChiralCenters(char *, Reaction &, int);
-  void ReadWildcards(char *, Reaction &, int);
-  void ReadConstraints(char *, Reaction &);
-  void readID(char *, Reaction::Constraint &, Reaction &, int);
-
   void superimpose_algorithm();
   void make_a_guess(Superimpose &, Reaction &);
   void neighbor_loop(Superimpose &, Reaction &);
@@ -185,11 +171,6 @@ class FixBondReact : public Fix {
   bool custom_constraint(const std::string &, Reaction &, std::vector<tagint> &);
   double rxnfunction(const std::string &, const std::string &, const std::string &, Molecule *, std::vector<tagint> &);
   void get_atoms2bond(int);
-  int get_chirality(double[12]);                           // get handedness given an ordered set of coordinates
-
-  void readline(char *);
-  int firstint(char *, const char *);
-  void parse_keyword(int, char *, char *);
 
   void far_partner(Reaction &);
   void close_partner(Reaction &);

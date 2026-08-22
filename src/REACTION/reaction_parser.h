@@ -32,9 +32,28 @@ public:
   ReactionParser(LAMMPS *lmp) : Pointers(lmp) {}
 
   void parse_reaction(char **, int, int, Reaction &);
+  int get_chirality(double[12]);                           // get handedness given an ordered set of coordinates
 
 private:
+  static constexpr int MAXLINE = 1024;                     // max length of line read from files
+  static constexpr int MAXCONARGS = 14;                    // max # of arguments for any type of constraint + rxnID
+
+  FILE *fp;
+
   void validate_variable_keyword(const char *, int);
+  void read_map_file(Reaction &);
+  void EdgeIDs(char *, Reaction &, int);
+  void Equivalences(char *, Reaction &, int);
+  void DeleteAtoms(char *, Reaction &, int);
+  void CreateAtoms(char *, Reaction &, int);
+  void CustomCharges(int, Reaction &);
+  void ChiralCenters(char *, Reaction &, int);
+  void ReadWildcards(char *, Reaction &, int);
+  void ReadConstraints(char *, Reaction &);
+  void readID(char *, Reaction::Constraint &, Reaction &, int);
+  void readline(char *);
+  void parse_keyword(int, char *, char *);
+  int firstint(char *, const char *);
 };
 
 }    // namespace LAMMPS_NS
