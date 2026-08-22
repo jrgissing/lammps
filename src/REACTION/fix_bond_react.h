@@ -27,6 +27,7 @@ FixStyle(bond/react,FixBondReact);
 #include "fix.h"
 #include "reaction.h"
 #include "reaction_constraints.h"
+#include "topology_matcher.h"
 
 #include <array>
 #include <deque>
@@ -67,8 +68,6 @@ class FixBondReact : public Fix {
  private:
   static constexpr double BIG = 1.0e20;
   static constexpr int MAXGUESS = 20;                      // max # of guesses allowed by superimpose algorithm
-  enum class Status { ACCEPT, REJECT, PROCEED,
-                      CONTINUE, GUESSFAIL, RESTORE };      // values for superimpose algorithm status
   enum class Reset_Mol_IDs { YES, NO, MOLMAP };            // values for reset_mol_ids keyword
   enum class Dedup_Modes { LOCAL, GLOBAL };                // flag for one-proc vs shared reaction sites
 
@@ -82,10 +81,10 @@ class FixBondReact : public Fix {
   Reset_Mol_IDs molid_mode;
   int custom_exclude_flag;
   int rescale_charges_anyflag;                             // indicates if any reactions do charge rescaling
-  Status status;
 
   std::vector<Reaction> rxns;
   ReactionConstraints *rxn_constraints;
+  TopologyMatcher *topo_matcher;
 
   int nmax;                                                // max num local atoms
   int max_natoms;                                          // max natoms in a molecule template

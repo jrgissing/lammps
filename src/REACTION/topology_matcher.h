@@ -27,7 +27,11 @@ namespace LAMMPS_NS {
 
 class TopologyMatcher : protected Pointers {
 public:
-  TopologyMatcher(LAMMPS *lmp) : Pointers(lmp) {}
+  TopologyMatcher(class LAMMPS *);// : Pointers(lmp) {}
+
+  enum class Status { ACCEPT, REJECT, PROCEED,
+                      CONTINUE, GUESSFAIL, RESTORE };      // values for superimpose algorithm status
+  Status status;
 
   int ring_check(Reaction &, std::vector<tagint> &);
 

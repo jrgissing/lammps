@@ -22,6 +22,10 @@ Contributing Author: Jacob Gissinger (jgissing@stevens.edu)
 
 using namespace LAMMPS_NS;
 
+TopologyMatcher::TopologyMatcher(LAMMPS *lmp) : Pointers(lmp) {
+  status = Status::PROCEED;
+}
+
 /* ----------------------------------------------------------------------
   Check that newly assigned atoms have correct bonds
   Necessary for certain ringed structures
