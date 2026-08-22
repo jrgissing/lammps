@@ -21,8 +21,6 @@
 #include "pointers.h"    // IWYU pragma: export
 #include "reaction.h"
 
-#include <array>
-#include <string>
 #include <vector>
 
 namespace LAMMPS_NS {

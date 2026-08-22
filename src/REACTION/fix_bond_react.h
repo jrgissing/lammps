@@ -26,6 +26,7 @@ FixStyle(bond/react,FixBondReact);
 
 #include "fix.h"
 #include "reaction.h"
+#include "reaction_constraints.h"
 
 #include <array>
 #include <deque>
@@ -81,20 +82,10 @@ class FixBondReact : public Fix {
   Reset_Mol_IDs molid_mode;
   int custom_exclude_flag;
   int rescale_charges_anyflag;                             // indicates if any reactions do charge rescaling
-  int nrxnfunction;
-  std::vector<std::string> rxnfunclist;                    // lists current special rxn function
-  std::vector<int> peratomflag;                            // 1 if special rxn function uses per-atom variable (vs. per-bond)
-  int atoms2bondflag;                                      // 1 if atoms2bond map has been populated on this timestep
   Status status;
 
   std::vector<Reaction> rxns;
-
-  int ncustomvars;
-  std::vector<std::string> customvarstrs;
-  int nvvec;
-  double **vvec;                                           // per-atom vector to store custom constraint atom-style variable values
-  class Compute *cperbond;                                 // pointer to 'compute bond/local' used by custom constraint ('rxnbond' function)
-  std::map<std::set<tagint>, int> atoms2bond;              // maps atom pair to index of local bond array
+  ReactionConstraints *rxn_constraints;
 
   int nmax;                                                // max num local atoms
   int max_natoms;                                          // max natoms in a molecule template
@@ -161,15 +152,7 @@ class FixBondReact : public Fix {
   void crosscheck_the_neighbor(Superimpose &, Reaction &);
   void inner_crosscheck_loop(Superimpose &, Reaction &);
   bool compare_atomtype(int, Reaction &, int);
-  int check_constraints(Reaction &, std::vector<tagint> &);
-  void get_IDcoords(Reaction::Constraint::IDType, int, double *, Molecule *, std::vector<tagint> &);
-  double get_temperature(std::vector<tagint> &);
   double get_totalcharge(Reaction &, std::vector<tagint> &);
-  void customvarnames();                                   // get per-atom variables names used by custom constraint
-  void get_customvars();                                   // evaluate local values for variables names used by custom constraint
-  bool custom_constraint(const std::string &, Reaction &, std::vector<tagint> &);
-  double rxnfunction(const std::string &, const std::string &, const std::string &, Molecule *, std::vector<tagint> &);
-  void get_atoms2bond(int);
 
   void far_partner(Reaction &);
   void close_partner(Reaction &);
