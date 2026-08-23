@@ -21,6 +21,8 @@ Contributing Author: Jacob Gissinger (jgissing@stevens.edu)
 #include "error.h"
 #include "molecule.h"
 
+#include <algorithm>
+
 using namespace LAMMPS_NS;
 
 TopologyMatcher::TopologyMatcher(LAMMPS *lmp) : Pointers(lmp) {
@@ -54,7 +56,7 @@ void TopologyMatcher::make_a_guess(Superimpose &super, Reaction &rxn)
 
   // per-atom property indicating if in bond/react master group
   int flag,cols;
-  int index1 = atom->find_custom("limit_tags",flag,cols);
+  int index1 = atom->find_custom("limit_tags",flag,cols); // TODO: this needs to be an input
   int *i_limit_tags = atom->ivector[index1];
 
   if (status == Status::GUESSFAIL && avail_guesses == 0) {
