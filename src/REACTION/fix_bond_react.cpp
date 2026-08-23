@@ -1429,128 +1429,16 @@ void FixBondReact::neighbor_loop(TopologyMatcher::Superimpose &super, Reaction &
   int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
 
   if (topo_matcher->status == TopologyMatcher::Status::RESTORE) {
-    check_a_neighbor(super, rxn);
+    topo_matcher->check_a_neighbor(super, rxn);
     return;
   }
 
   for (sp.neigh = 0; sp.neigh < nfirst_neighs; sp.neigh++) {
     if (sp.glove[(int)rxn.reactant->special[sp.pion][sp.neigh]-1] == 0) {
-      check_a_neighbor(super, rxn);
+      topo_matcher->check_a_neighbor(super, rxn);
     }
   }
   // status should still = PROCEED
-}
-
-/* ----------------------------------------------------------------------
-  Check if we can assign this First Neighbor to pre-reacted template
-  without guessing. If so, do it! If not, call crosscheck_the_nieghbor().
-------------------------------------------------------------------------- */
-
-void FixBondReact::check_a_neighbor(TopologyMatcher::Superimpose &super, Reaction &rxn)
-{
-  TopologyMatcher::Superimpose::StatePoint &sp = super.sp;
-
-  int *type = atom->type;
-  int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
-
-  if (topo_matcher->status != TopologyMatcher::Status::RESTORE) {
-    // special consideration for hydrogen atoms (and all first neighbors bonded to no other atoms) (and aren't edge atoms)
-    if (rxn.reactant->nspecial[(int)rxn.reactant->special[sp.pion][sp.neigh]-1][0] == 1 && rxn.atoms[(int)rxn.reactant->special[sp.pion][sp.neigh]-1].edge == 0) {
-
-      for (int i = 0; i < nfirst_neighs; i++) {
-
-        int checktype = type[(int)atom->map(xspecial[(int)atom->map(sp.glove[sp.pion])][i])];
-        int reactant_atom = (int) rxn.reactant->special[sp.pion][sp.neigh];
-        if (compare_atomtype(checktype, rxn, reactant_atom) &&
-            nxspecial[(int)atom->map(xspecial[(int)atom->map(sp.glove[sp.pion])][i])][0] == 1) {
-
-          int already_assigned = 0;
-          for (int j = 0; j < rxn.reactant->natoms; j++) {
-            if (sp.glove[j] == xspecial[atom->map(sp.glove[sp.pion])][i]) {
-              already_assigned = 1;
-              break;
-            }
-          }
-
-          if (already_assigned == 0) {
-            sp.glove[(int)rxn.reactant->special[sp.pion][sp.neigh]-1] = xspecial[(int)atom->map(sp.glove[sp.pion])][i];
-
-            //another check for ghost atoms. perhaps remove the one in make_a_guess
-            if (atom->map(sp.glove[(int)rxn.reactant->special[sp.pion][sp.neigh]-1]) < 0) {
-              error->one(FLERR,"Fix bond/react: Fix bond/react needs ghost atoms from further away");
-            }
-
-            for (int j = 0; j < rxn.reactant->nspecial[rxn.reactant->special[sp.pion][sp.neigh]-1][0]; j++) {
-              sp.pioneer_count[rxn.reactant->special[rxn.reactant->special[sp.pion][sp.neigh]-1][j]-1]++;
-            }
-
-            sp.glove_counter++;
-            if (sp.glove_counter == rxn.reactant->natoms) {
-              if (TopologyMatcher(lmp).ring_check(rxn, sp.glove) && topo_matcher->rxn_constraints->check(rxn, sp.glove)) topo_matcher->status = TopologyMatcher::Status::ACCEPT;
-              else topo_matcher->status = TopologyMatcher::Status::GUESSFAIL;
-              return;
-            }
-            // status should still == PROCEED
-            return;
-          }
-        }
-      }
-      // we are here if no matching atom found
-      topo_matcher->status = TopologyMatcher::Status::GUESSFAIL;
-      return;
-    }
-  }
-
-  topo_matcher->crosscheck_the_neighbor(super, rxn);
-  if (topo_matcher->status != TopologyMatcher::Status::PROCEED) {
-    if (topo_matcher->status == TopologyMatcher::Status::CONTINUE)
-      topo_matcher->status = TopologyMatcher::Status::PROCEED;
-    return;
-  }
-
-  // finally ready to match non-duplicate, non-edge atom IDs!!
-
-  for (int i = 0; i < nfirst_neighs; i++) {
-
-    int checktype = type[atom->map((int)xspecial[(int)atom->map(sp.glove[sp.pion])][i])];
-    int reactant_atom = (int) rxn.reactant->special[sp.pion][sp.neigh];
-    if (compare_atomtype(checktype, rxn, reactant_atom)) {
-      int already_assigned = 0;
-
-      //check if a first neighbor of the pioneer is already assigned to pre-reacted template
-      for (int j = 0; j < rxn.reactant->natoms; j++) {
-        if (sp.glove[j] == xspecial[atom->map(sp.glove[sp.pion])][i]) {
-          already_assigned = 1;
-          break;
-        }
-      }
-
-      if (already_assigned == 0) {
-        sp.glove[(int)rxn.reactant->special[sp.pion][sp.neigh]-1] = xspecial[(int)atom->map(sp.glove[sp.pion])][i];
-
-        //another check for ghost atoms. perhaps remove the one in make_a_guess
-        if (atom->map(sp.glove[(int)rxn.reactant->special[sp.pion][sp.neigh]-1]) < 0) {
-          error->one(FLERR,"Fix bond/react: Fix bond/react needs ghost atoms from further away");
-        }
-
-        for (int ii = 0; ii < rxn.reactant->nspecial[rxn.reactant->special[sp.pion][sp.neigh]-1][0]; ii++) {
-          sp.pioneer_count[rxn.reactant->special[rxn.reactant->special[sp.pion][sp.neigh]-1][ii]-1]++;
-        }
-
-        sp.glove_counter++;
-        if (sp.glove_counter == rxn.reactant->natoms) {
-          if (TopologyMatcher(lmp).ring_check(rxn, sp.glove) && topo_matcher->rxn_constraints->check(rxn, sp.glove)) topo_matcher->status = TopologyMatcher::Status::ACCEPT;
-          else topo_matcher->status = TopologyMatcher::Status::GUESSFAIL;
-          return;
-          // will never complete here when there are edge atoms
-          // ...actually that could be wrong if people get creative...shouldn't affect anything
-        }
-        // status should still = PROCEED
-        return;
-      }
-    }
-  }
-  // status is still 'PROCEED' if we are here!
 }
 
 /* ----------------------------------------------------------------------

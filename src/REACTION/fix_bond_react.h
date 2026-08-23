@@ -134,7 +134,6 @@ class FixBondReact : public Fix {
   void superimpose_algorithm();
   void make_a_guess(TopologyMatcher::Superimpose &, Reaction &);
   void neighbor_loop(TopologyMatcher::Superimpose &, Reaction &);
-  void check_a_neighbor(TopologyMatcher::Superimpose &, Reaction &);
   bool compare_atomtype(int, Reaction &, int);
   double get_totalcharge(Reaction &, std::vector<tagint> &);
 
