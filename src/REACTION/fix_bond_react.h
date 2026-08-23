@@ -132,7 +132,6 @@ class FixBondReact : public Fix {
   int vizsteps;                    // number of steps to highlight atoms in reactions
 
   void superimpose_algorithm();
-  void make_a_guess(TopologyMatcher::Superimpose &, Reaction &);
   bool compare_atomtype(int, Reaction &, int);
   double get_totalcharge(Reaction &, std::vector<tagint> &);
 

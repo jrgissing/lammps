@@ -36,6 +36,102 @@ TopologyMatcher::~TopologyMatcher()
 }
 
 /* ----------------------------------------------------------------------
+  Screen for obvious algorithm fails. This is the return point when a guess
+  has failed: check for available restore points.
+------------------------------------------------------------------------- */
+
+void TopologyMatcher::make_a_guess(Superimpose &super, Reaction &rxn)
+{
+  // full special lists - may need correction for unusual special bond settings
+  int **nxspecial = atom->nspecial;
+  tagint **xspecial = atom->special;
+
+  Superimpose::StatePoint &sp = super.sp;
+  int &avail_guesses = super.avail_guesses;
+
+  int *type = atom->type;
+  int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
+
+  // per-atom property indicating if in bond/react master group
+  int flag,cols;
+  int index1 = atom->find_custom("limit_tags",flag,cols);
+  int *i_limit_tags = atom->ivector[index1];
+
+  if (status == Status::GUESSFAIL && avail_guesses == 0) {
+    status = Status::REJECT;
+    return;
+  }
+
+  if (status == Status::GUESSFAIL && avail_guesses > 0) {
+    // load restore point
+    for (int i = 0; i < rxn.reactant->natoms; i++) {
+      sp.glove[i] = restore_pts[avail_guesses-1].glove[i];
+      sp.pioneer_count[i] = restore_pts[avail_guesses-1].pioneer_count[i];
+      sp.pioneers[i] = restore_pts[avail_guesses-1].pioneers[i];
+    }
+    sp.pion = restore_pts[avail_guesses-1].pion;
+    sp.neigh = restore_pts[avail_guesses-1].neigh;
+    sp.trace = restore_pts[avail_guesses-1].trace;
+    sp.glove_counter = restore_pts[avail_guesses-1].glove_counter;
+    status = Status::RESTORE;
+    neighbor_loop(super, rxn);
+    if (status != Status::PROCEED) return;
+  }
+
+  nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
+
+  //  check if any of first neighbors are in bond_react_MASTER_group
+  //  if so, this constitutes a fail
+  //  because still undergoing a previous reaction!
+  //  could technically fail unnecessarily during a wrong guess if near edge atoms
+  //  we accept this temporary and infrequent decrease in reaction occurrences
+
+  for (int i = 0; i < nxspecial[atom->map(sp.glove[sp.pion])][0]; i++) {
+    if (atom->map(xspecial[atom->map(sp.glove[sp.pion])][i]) < 0) {
+      error->one(FLERR,"Fix bond/react: Fix bond/react needs ghost atoms from further away"); // parallel issues.
+    }
+    if (i_limit_tags[(int)atom->map(xspecial[atom->map(sp.glove[sp.pion])][i])] != 0) {
+      status = Status::GUESSFAIL;
+      return;
+    }
+  }
+
+  // check for same number of neighbors between unreacted mol and simulation
+  if (nfirst_neighs != nxspecial[atom->map(sp.glove[sp.pion])][0]) {
+    status = Status::GUESSFAIL;
+    return;
+  }
+
+  // make sure all neighbors aren't already assigned
+  // an issue discovered for coarse-grained example
+  int assigned_count = 0;
+  for (int i = 0; i < nfirst_neighs; i++)
+    for (int j = 0; j < rxn.reactant->natoms; j++)
+      if (xspecial[atom->map(sp.glove[sp.pion])][i] == sp.glove[j]) {
+        assigned_count++;
+        break;
+      }
+
+  if (assigned_count == nfirst_neighs) status = Status::GUESSFAIL;
+
+  // check if all neigh atom types are the same between simulation and unreacted mol
+  std::multiset<int> mol_types, lcl_types;
+  for (int i = 0; i < nfirst_neighs; i++) {
+    int imolatom = (int) rxn.reactant->special[sp.pion][i]-1;
+    if (!rxn.atoms[imolatom].wildcard) mol_types.insert(rxn.reactant->type[imolatom]);
+    lcl_types.insert(type[atom->map(xspecial[atom->map(sp.glove[sp.pion])][i])]);
+  }
+
+  if (!std::includes(lcl_types.begin(), lcl_types.end(), mol_types.begin(), mol_types.end())) {
+    status = Status::GUESSFAIL;
+    return;
+  }
+
+  // okay everything seems to be in order. let's assign some ID pairs!!!
+  neighbor_loop(super, rxn);
+}
+
+/* ----------------------------------------------------------------------
   Loop through all First Bonded Neighbors of the current Pioneer.
   Prepare appropriately if we are in Restore Mode.
 ------------------------------------------------------------------------- */
