@@ -36,6 +36,54 @@ TopologyMatcher::~TopologyMatcher()
 }
 
 /* ----------------------------------------------------------------------
+  Check if there a viable guess to be made. If so, prepare to make a
+  guess by recording a restore point.
+------------------------------------------------------------------------- */
+
+void TopologyMatcher::crosscheck_the_neighbor(Superimpose &super, Reaction &rxn)
+{
+  Superimpose::StatePoint &sp = super.sp;
+  int &avail_guesses = super.avail_guesses;
+
+  int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
+
+  if (status == Status::RESTORE) {
+    inner_crosscheck_loop(super, rxn);
+    return;
+  }
+
+  for (sp.trace = 0; sp.trace < nfirst_neighs; sp.trace++) {
+    int reactant_atom1 = (int) rxn.reactant->special[sp.pion][sp.trace];
+    int atom1type = rxn.reactant->type[reactant_atom1-1];
+    int reactant_atom2 = (int) rxn.reactant->special[sp.pion][sp.neigh];
+    int atom2type = rxn.reactant->type[reactant_atom2-1];
+    if (sp.neigh != sp.trace && (compare_atomtype(atom2type, rxn, reactant_atom1) || compare_atomtype(atom1type, rxn, reactant_atom2)) &&
+        sp.glove[rxn.reactant->special[sp.pion][sp.trace]-1] == 0) {
+
+      if (avail_guesses == MAXGUESS) {
+        error->warning(FLERR,"Fix bond/react: Fix bond/react failed because MAXGUESS set too small. ask developer for info");
+        status = Status::GUESSFAIL;
+        return;
+      }
+      avail_guesses++;
+      for (int i = 0; i < rxn.reactant->natoms; i++) {
+        restore_pts[avail_guesses-1].glove[i] = sp.glove[i];
+        restore_pts[avail_guesses-1].pioneer_count[i] = sp.pioneer_count[i];
+        restore_pts[avail_guesses-1].pioneers[i] = sp.pioneers[i];
+      }
+      restore_pts[avail_guesses-1].pion = sp.pion;
+      restore_pts[avail_guesses-1].neigh = sp.neigh;
+      restore_pts[avail_guesses-1].trace = sp.trace;
+      restore_pts[avail_guesses-1].glove_counter = sp.glove_counter;
+
+      inner_crosscheck_loop(super, rxn);
+      return;
+    }
+  }
+  // status is still 'PROCEED' if we are here!
+}
+
+/* ----------------------------------------------------------------------
   We are ready to make a guess. If there are multiple possible choices
   for this guess, keep track of these.
 ------------------------------------------------------------------------- */

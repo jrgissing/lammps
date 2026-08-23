@@ -66,7 +66,6 @@ class FixBondReact : public Fix {
 
  private:
   static constexpr double BIG = 1.0e20;
-  static constexpr int MAXGUESS = 20;                      // max # of guesses allowed by superimpose algorithm
   enum class Reset_Mol_IDs { YES, NO, MOLMAP };            // values for reset_mol_ids keyword
   enum class Dedup_Modes { LOCAL, GLOBAL };                // flag for one-proc vs shared reaction sites
 
@@ -110,8 +109,6 @@ class FixBondReact : public Fix {
   int countflag, commflag;
   int nlevels_respa;
 
-  std::vector<TopologyMatcher::Superimpose::StatePoint> restore_pts;
-
   int **nxspecial;                                         // full number of 1-4 neighbors
   tagint **xspecial;                                       // full 1-4 neighbor list
 
@@ -138,7 +135,6 @@ class FixBondReact : public Fix {
   void make_a_guess(TopologyMatcher::Superimpose &, Reaction &);
   void neighbor_loop(TopologyMatcher::Superimpose &, Reaction &);
   void check_a_neighbor(TopologyMatcher::Superimpose &, Reaction &);
-  void crosscheck_the_neighbor(TopologyMatcher::Superimpose &, Reaction &);
   bool compare_atomtype(int, Reaction &, int);
   double get_totalcharge(Reaction &, std::vector<tagint> &);
 

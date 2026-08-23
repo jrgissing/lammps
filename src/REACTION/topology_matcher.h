@@ -31,6 +31,8 @@ public:
   TopologyMatcher(class LAMMPS *);
   ~TopologyMatcher();
 
+  static constexpr int MAXGUESS = 20;                      // max # of guesses allowed by superimpose algorithm
+
   enum class Status { ACCEPT, REJECT, PROCEED,
                       CONTINUE, GUESSFAIL, RESTORE };      // values for superimpose algorithm status
   Status status;
@@ -44,13 +46,17 @@ public:
     } sp;
   };
 
+  std::vector<Superimpose::StatePoint> restore_pts;
+
   ReactionConstraints *rxn_constraints;
 
-  int ring_check(Reaction &, std::vector<tagint> &);
-  void inner_crosscheck_loop(Superimpose &, Reaction &); //to be private
+  int ring_check(Reaction &, std::vector<tagint> &); // to be private
+  void crosscheck_the_neighbor(Superimpose &, Reaction &); // to be private
 
 private:
   bool compare_atomtype(int, Reaction &, int);
+
+  void inner_crosscheck_loop(Superimpose &, Reaction &);
 };
 
 }    // namespace LAMMPS_NS
