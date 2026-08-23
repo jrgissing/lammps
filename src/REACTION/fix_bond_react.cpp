@@ -1360,7 +1360,7 @@ void FixBondReact::make_a_guess(TopologyMatcher::Superimpose &super, Reaction &r
     sp.trace = topo_matcher->restore_pts[avail_guesses-1].trace;
     sp.glove_counter = topo_matcher->restore_pts[avail_guesses-1].glove_counter;
     topo_matcher->status = TopologyMatcher::Status::RESTORE;
-    neighbor_loop(super, rxn);
+    topo_matcher->neighbor_loop(super, rxn);
     if (topo_matcher->status != TopologyMatcher::Status::PROCEED) return;
   }
 
@@ -1414,31 +1414,7 @@ void FixBondReact::make_a_guess(TopologyMatcher::Superimpose &super, Reaction &r
   }
 
   // okay everything seems to be in order. let's assign some ID pairs!!!
-  neighbor_loop(super, rxn);
-}
-
-/* ----------------------------------------------------------------------
-  Loop through all First Bonded Neighbors of the current Pioneer.
-  Prepare appropriately if we are in Restore Mode.
-------------------------------------------------------------------------- */
-
-void FixBondReact::neighbor_loop(TopologyMatcher::Superimpose &super, Reaction &rxn)
-{
-  TopologyMatcher::Superimpose::StatePoint &sp = super.sp;
-
-  int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
-
-  if (topo_matcher->status == TopologyMatcher::Status::RESTORE) {
-    topo_matcher->check_a_neighbor(super, rxn);
-    return;
-  }
-
-  for (sp.neigh = 0; sp.neigh < nfirst_neighs; sp.neigh++) {
-    if (sp.glove[(int)rxn.reactant->special[sp.pion][sp.neigh]-1] == 0) {
-      topo_matcher->check_a_neighbor(super, rxn);
-    }
-  }
-  // status should still = PROCEED
+  topo_matcher->neighbor_loop(super, rxn);
 }
 
 /* ----------------------------------------------------------------------

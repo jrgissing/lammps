@@ -50,13 +50,14 @@ public:
 
   ReactionConstraints *rxn_constraints;
 
-  int ring_check(Reaction &, std::vector<tagint> &); // to be private
-  void check_a_neighbor(Superimpose &, Reaction &); // to be private
+  void neighbor_loop(Superimpose &, Reaction &);
 
 private:
-  bool compare_atomtype(int, Reaction &, int);
+  void check_a_neighbor(Superimpose &, Reaction &);
   void crosscheck_the_neighbor(Superimpose &, Reaction &);
   void inner_crosscheck_loop(Superimpose &, Reaction &);
+  int ring_check(Reaction &, std::vector<tagint> &);
+  bool compare_atomtype(int, Reaction &, int);
 };
 
 }    // namespace LAMMPS_NS

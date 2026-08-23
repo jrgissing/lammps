@@ -36,6 +36,30 @@ TopologyMatcher::~TopologyMatcher()
 }
 
 /* ----------------------------------------------------------------------
+  Loop through all First Bonded Neighbors of the current Pioneer.
+  Prepare appropriately if we are in Restore Mode.
+------------------------------------------------------------------------- */
+
+void TopologyMatcher::neighbor_loop(Superimpose &super, Reaction &rxn)
+{
+  Superimpose::StatePoint &sp = super.sp;
+
+  int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
+
+  if (status == Status::RESTORE) {
+    check_a_neighbor(super, rxn);
+    return;
+  }
+
+  for (sp.neigh = 0; sp.neigh < nfirst_neighs; sp.neigh++) {
+    if (sp.glove[(int)rxn.reactant->special[sp.pion][sp.neigh]-1] == 0) {
+      check_a_neighbor(super, rxn);
+    }
+  }
+  // status should still = PROCEED
+}
+
+/* ----------------------------------------------------------------------
   Check if we can assign this First Neighbor to pre-reacted template
   without guessing. If so, do it! If not, call crosscheck_the_nieghbor().
 ------------------------------------------------------------------------- */
