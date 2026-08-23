@@ -1039,33 +1039,21 @@ void FixBondReact::superimpose_algorithm()
   int tmp;
   localsendlist = (int *) comm->extract("localsendlist",tmp);
 
-  TopologyMatcher::Superimpose super;
-  TopologyMatcher::Superimpose::StatePoint &sp = super.sp;
-
-  sp.glove.resize(max_natoms);
-  sp.pioneers.resize(max_natoms);
-  sp.pioneer_count.resize(max_natoms);
-
-  topo_matcher->restore_pts.resize(topo_matcher->MAXGUESS);
-  for (auto &restore_pt : topo_matcher->restore_pts) {
-    restore_pt.glove.resize(max_natoms);
-    restore_pt.pioneers.resize(max_natoms);
-    restore_pt.pioneer_count.resize(max_natoms);
-  }
   my_mega_glove.resize(max_natoms+cuff); // mega_glove indexing seems inside-out
   for (auto &vec : my_mega_glove) vec.resize(allnattempt, 0);
 
   // time to check if reaction sites match the pre-reaction template
   // rxn_prob accounted for outside of topo_matcher
-  // reaction constraints checked inside topo_matcher
+  // reaction constraints checked inside topo_matcher (for now)
+  std::vector<tagint> outglove;
   for (auto &rxn : rxns) {
     for (auto &rxn_attempt : rxn.attempts) {
-      if ( topo_matcher->match_topology(super, rxn, rxn_attempt) ) {
+      if ( topo_matcher->match_topology(outglove, rxn, rxn_attempt) ) {
         if (rxn.fraction < 1.0 && random[rxn.ID]->uniform() >= rxn.fraction) continue;
         my_mega_glove[0][my_num_mega] = (double) rxn.ID;
-        if (rxn.rescale_charges_flag) my_mega_glove[1][my_num_mega] = get_totalcharge(rxn, sp.glove);
+        if (rxn.rescale_charges_flag) my_mega_glove[1][my_num_mega] = get_totalcharge(rxn, outglove);
         for (int i = 0; i < rxn.reactant->natoms; i++) {
-          my_mega_glove[i+cuff][my_num_mega] = (double) sp.glove[i];
+          my_mega_glove[i+cuff][my_num_mega] = (double) outglove[i];
         }
         my_num_mega++;
       }

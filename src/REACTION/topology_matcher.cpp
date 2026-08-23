@@ -54,7 +54,7 @@ TopologyMatcher::~TopologyMatcher()
     RESTORE: restore mode, load most recent restore point
 ------------------------------------------------------------------------- */
 
-bool TopologyMatcher::match_topology(Superimpose &super, Reaction &rxn, std::array<tagint, 2> rxn_attempt)
+bool TopologyMatcher::match_topology(std::vector<tagint> &outglove, Reaction rxn, std::array<tagint, 2> rxn_attempt)
 {
   // full special lists - may need correction for unusual special bond settings
   int **nxspecial = atom->nspecial;
@@ -70,7 +70,20 @@ bool TopologyMatcher::match_topology(Superimpose &super, Reaction &rxn, std::arr
   // glove: global IDs. index indicates is pre-reaction ID-1, value is mapped sim atom ID
   // glove_counter: used to determine when to terminate Superimpose Algorithm
 
+  Superimpose super;
   Superimpose::StatePoint &sp = super.sp;
+
+  sp.glove.resize(rxn.reactant->natoms);
+  sp.pioneers.resize(rxn.reactant->natoms);
+  sp.pioneer_count.resize(rxn.reactant->natoms);
+
+  restore_pts.resize(MAXGUESS);
+  for (auto &restore_pt : restore_pts) {
+    restore_pt.glove.resize(rxn.reactant->natoms);
+    restore_pt.pioneers.resize(rxn.reactant->natoms);
+    restore_pt.pioneer_count.resize(rxn.reactant->natoms);
+  }
+
   sp.pion = sp.neigh = sp.trace = sp.glove_counter = 0;
   std::fill(sp.glove.begin(), sp.glove.end(), 0);
 
@@ -137,8 +150,10 @@ bool TopologyMatcher::match_topology(Superimpose &super, Reaction &rxn, std::arr
           "via at least one path that does not involve edge atoms.");
     }
   }
-  if (status == Status::ACCEPT) return true;
-  return false;
+  if (status == Status::ACCEPT) {
+    outglove = sp.glove;
+    return true;
+  } return false;
 }
 
 /* ----------------------------------------------------------------------
@@ -146,7 +161,7 @@ bool TopologyMatcher::match_topology(Superimpose &super, Reaction &rxn, std::arr
   has failed: check for available restore points.
 ------------------------------------------------------------------------- */
 
-void TopologyMatcher::make_a_guess(Superimpose &super, Reaction &rxn)
+void TopologyMatcher::make_a_guess(Superimpose &super, Reaction rxn)
 {
   // full special lists - may need correction for unusual special bond settings
   int **nxspecial = atom->nspecial;
@@ -242,7 +257,7 @@ void TopologyMatcher::make_a_guess(Superimpose &super, Reaction &rxn)
   Prepare appropriately if we are in Restore Mode.
 ------------------------------------------------------------------------- */
 
-void TopologyMatcher::neighbor_loop(Superimpose &super, Reaction &rxn)
+void TopologyMatcher::neighbor_loop(Superimpose &super, Reaction rxn)
 {
   Superimpose::StatePoint &sp = super.sp;
 
@@ -266,7 +281,7 @@ void TopologyMatcher::neighbor_loop(Superimpose &super, Reaction &rxn)
   without guessing. If so, do it! If not, call crosscheck_the_nieghbor().
 ------------------------------------------------------------------------- */
 
-void TopologyMatcher::check_a_neighbor(Superimpose &super, Reaction &rxn)
+void TopologyMatcher::check_a_neighbor(Superimpose &super, Reaction rxn)
 {
   // full special lists - may need correction for unusual special bond settings
   int **nxspecial = atom->nspecial;
@@ -382,7 +397,7 @@ void TopologyMatcher::check_a_neighbor(Superimpose &super, Reaction &rxn)
   guess by recording a restore point.
 ------------------------------------------------------------------------- */
 
-void TopologyMatcher::crosscheck_the_neighbor(Superimpose &super, Reaction &rxn)
+void TopologyMatcher::crosscheck_the_neighbor(Superimpose &super, Reaction rxn)
 {
   Superimpose::StatePoint &sp = super.sp;
   int &avail_guesses = super.avail_guesses;
@@ -430,7 +445,7 @@ void TopologyMatcher::crosscheck_the_neighbor(Superimpose &super, Reaction &rxn)
   for this guess, keep track of these.
 ------------------------------------------------------------------------- */
 
-void TopologyMatcher::inner_crosscheck_loop(Superimpose &super, Reaction &rxn)
+void TopologyMatcher::inner_crosscheck_loop(Superimpose &super, Reaction rxn)
 {
   // full special lists - may need correction for unusual special bond settings
   int **nxspecial = atom->nspecial;
@@ -518,7 +533,7 @@ void TopologyMatcher::inner_crosscheck_loop(Superimpose &super, Reaction &rxn)
   Necessary for certain ringed structures
 ------------------------------------------------------------------------- */
 
-int TopologyMatcher::ring_check(Reaction &rxn, std::vector<tagint> &glove)
+int TopologyMatcher::ring_check(Reaction rxn, std::vector<tagint> glove)
 {
   // full special lists - may need correction for unusual special bond settings
   int **nxspecial = atom->nspecial;
@@ -554,7 +569,7 @@ int TopologyMatcher::ring_check(Reaction &rxn, std::vector<tagint> &glove)
 check if an atom type matches that of a reactant atom
 ------------------------------------------------------------------------- */
 
-bool TopologyMatcher::compare_atomtype(int checktype, Reaction &rxn, int reactant_atom)
+bool TopologyMatcher::compare_atomtype(int checktype, Reaction rxn, int reactant_atom)
 {
   int iatom = reactant_atom - 1; // index of reactant atom
   if (checktype == rxn.reactant->type[iatom] || rxn.atoms[iatom].wildcard) return true;

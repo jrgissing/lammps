@@ -31,13 +31,18 @@ public:
   TopologyMatcher(class LAMMPS *);
   ~TopologyMatcher();
 
-  static constexpr int MAXGUESS = 20;        // to be private              // max # of guesses allowed by superimpose algorithm
+  ReactionConstraints *rxn_constraints;
 
-  enum class Status { ACCEPT, REJECT, PROCEED, // to be private
+  bool match_topology(std::vector<tagint> &, Reaction, std::array<tagint, 2>);
+
+private:
+  static constexpr int MAXGUESS = 20;                      // max # of guesses allowed by superimpose algorithm
+
+  enum class Status { ACCEPT, REJECT, PROCEED,
                       CONTINUE, GUESSFAIL, RESTORE };      // values for superimpose algorithm status
-  Status status; // to be private
+  Status status;
 
-  struct Superimpose { // to be private. only need glove output
+  struct Superimpose {
     int avail_guesses;                                     // num of restore points available
     std::vector<int> guess_branch;                         // used when there is more than two choices when guessing
     struct StatePoint {
@@ -45,21 +50,15 @@ public:
       std::vector<tagint> glove, pioneer_count, pioneers;
     } sp;
   };
+  std::vector<Superimpose::StatePoint> restore_pts;
 
-  std::vector<Superimpose::StatePoint> restore_pts; // to be private
-
-  ReactionConstraints *rxn_constraints;
-
-  bool match_topology(Superimpose &, Reaction &, std::array<tagint, 2>);
-
-private:
-  void make_a_guess(Superimpose &, Reaction &);
-  void neighbor_loop(Superimpose &, Reaction &);
-  void check_a_neighbor(Superimpose &, Reaction &);
-  void crosscheck_the_neighbor(Superimpose &, Reaction &);
-  void inner_crosscheck_loop(Superimpose &, Reaction &);
-  int ring_check(Reaction &, std::vector<tagint> &);
-  bool compare_atomtype(int, Reaction &, int);
+  void make_a_guess(Superimpose &, Reaction);
+  void neighbor_loop(Superimpose &, Reaction);
+  void check_a_neighbor(Superimpose &, Reaction);
+  void crosscheck_the_neighbor(Superimpose &, Reaction);
+  void inner_crosscheck_loop(Superimpose &, Reaction);
+  int ring_check(Reaction, std::vector<tagint>);
+  bool compare_atomtype(int, Reaction, int);
 };
 
 }    // namespace LAMMPS_NS
