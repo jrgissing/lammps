@@ -50,9 +50,10 @@ public:
 
   ReactionConstraints *rxn_constraints;
 
-  void make_a_guess(Superimpose &, Reaction &);
+  bool match_topology(Superimpose &, Reaction &, std::array<tagint, 2>);
 
 private:
+  void make_a_guess(Superimpose &, Reaction &);
   void neighbor_loop(Superimpose &, Reaction &);
   void check_a_neighbor(Superimpose &, Reaction &);
   void crosscheck_the_neighbor(Superimpose &, Reaction &);

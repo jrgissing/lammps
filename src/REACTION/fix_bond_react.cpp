@@ -1025,15 +1025,7 @@ void FixBondReact::close_partner(Reaction &rxn)
 }
 
 /* ----------------------------------------------------------------------
-  Set up global variables. Loop through all pairs; loop through Pioneers
-  until Superimpose Algorithm is completed for each pair.
-  various statuses of superimpose algorithm:
-  ACCEPT: site successfully matched to pre-reacted template
-  REJECT: site does not match pre-reacted template
-  PROCEED: normal execution (non-guessing mode)
-  CONTINUE: a neighbor has been assigned, skip to next neighbor
-  GUESSFAIL: a guess has failed (if no more restore points, status = 'REJECT')
-  RESTORE: restore mode, load most recent restore point
+  Find reaction sites that match the pre-reaction template
 ------------------------------------------------------------------------- */
 
 void FixBondReact::superimpose_algorithm()
@@ -1047,19 +1039,8 @@ void FixBondReact::superimpose_algorithm()
   int tmp;
   localsendlist = (int *) comm->extract("localsendlist",tmp);
 
-  // quick description of important global indices you'll see floating about:
-  // pion: the pioneer loop index
-  // neigh: in the first neighbor index
-  // trace: retraces the first nieghbors. once you choose a first neighbor, you then check for other nieghbors of same type
-  // pioneers: during Superimpose Algorithm, atoms which have been assigned, but whose first neighbors haven't
-  // glove: global IDs. index indicates is pre-reaction ID-1, value is mapped sim atom ID
-  // glove_counter: used to determine when to terminate Superimpose Algorithm
-
   TopologyMatcher::Superimpose super;
   TopologyMatcher::Superimpose::StatePoint &sp = super.sp;
-  int &avail_guesses = super.avail_guesses;
-  std::vector<int> &guess_branch = super.guess_branch;
-  guess_branch.resize(topo_matcher->MAXGUESS, 0);
 
   sp.glove.resize(max_natoms);
   sp.pioneers.resize(max_natoms);
@@ -1077,95 +1058,13 @@ void FixBondReact::superimpose_algorithm()
   // let's finally begin the superimpose loop
   for (auto &rxn : rxns) {
     for (auto &rxn_attempt : rxn.attempts) {
-
-      topo_matcher->status = TopologyMatcher::Status::PROCEED;
-
-      sp.pion = sp.neigh = sp.trace = sp.glove_counter = 0;
-      std::fill(sp.glove.begin(), sp.glove.end(), 0);
-      std::fill(guess_branch.begin(), guess_branch.end(), 0);
-
-      sp.glove[rxn.ibonding-1] = rxn_attempt[0];
-      sp.glove_counter++;
-      sp.glove[rxn.jbonding-1] = rxn_attempt[1];
-      sp.glove_counter++;
-
-      // special case, only two atoms in reaction templates
-      // then: bonding reactant nspecials guaranteed to be equal, and either 0 or 1
-      if (sp.glove_counter == rxn.reactant->natoms) {
-        tagint local_atom1 = atom->map(sp.glove[rxn.ibonding-1]);
-        tagint local_atom2 = atom->map(sp.glove[rxn.jbonding-1]);
-        if ( (nxspecial[local_atom1][0] == rxn.reactant->nspecial[rxn.ibonding-1][0] &&
-              nxspecial[local_atom2][0] == nxspecial[local_atom1][0]) &&
-             (nxspecial[local_atom1][0] == 0 ||
-              xspecial[local_atom1][0] == atom->tag[local_atom2]) &&
-             topo_matcher->rxn_constraints->check(rxn, sp.glove)) {
-          if (rxn.fraction < 1.0 &&
-              random[rxn.ID]->uniform() >= rxn.fraction) {
-            topo_matcher->status = TopologyMatcher::Status::REJECT;
-          } else {
-            topo_matcher->status = TopologyMatcher::Status::ACCEPT;
-            my_mega_glove[0][my_num_mega] = (double) rxn.ID;
-            if (rxn.rescale_charges_flag) my_mega_glove[1][my_num_mega] = get_totalcharge(rxn, sp.glove);
-            for (int i = 0; i < rxn.reactant->natoms; i++) {
-              my_mega_glove[i+cuff][my_num_mega] = (double) sp.glove[i];
-            }
-            my_num_mega++;
-          }
-        } else topo_matcher->status = TopologyMatcher::Status::REJECT;
-      }
-
-      avail_guesses = 0;
-
-      std::fill(sp.pioneer_count.begin(), sp.pioneer_count.end(), 0);
-
-      for (int i = 0; i < rxn.reactant->nspecial[rxn.ibonding-1][0]; i++)
-        sp.pioneer_count[rxn.reactant->special[rxn.ibonding-1][i]-1]++;
-
-      for (int i = 0; i < rxn.reactant->nspecial[rxn.jbonding-1][0]; i++)
-        sp.pioneer_count[rxn.reactant->special[rxn.jbonding-1][i]-1]++;
-
-
-      int hang_catch = 0;
-      while (topo_matcher->status != TopologyMatcher::Status::ACCEPT && topo_matcher->status != TopologyMatcher::Status::REJECT) {
-
-        for (int i = 0; i < max_natoms; i++) sp.pioneers[i] = 0;
-
+      if ( topo_matcher->match_topology(super, rxn, rxn_attempt) ) {
+        my_mega_glove[0][my_num_mega] = (double) rxn.ID;
+        if (rxn.rescale_charges_flag) my_mega_glove[1][my_num_mega] = get_totalcharge(rxn, sp.glove);
         for (int i = 0; i < rxn.reactant->natoms; i++) {
-          if (sp.glove[i] != 0 && sp.pioneer_count[i] < rxn.reactant->nspecial[i][0] && rxn.atoms[i].edge == 0) {
-            sp.pioneers[i] = 1;
-          }
+          my_mega_glove[i+cuff][my_num_mega] = (double) sp.glove[i];
         }
-
-        // run through the pioneers
-        // due to use of restore points, 'pion' index can change in loop
-        for (sp.pion = 0; sp.pion < rxn.reactant->natoms; sp.pion++) {
-          if (sp.pioneers[sp.pion] || topo_matcher->status == TopologyMatcher::Status::GUESSFAIL) {
-            topo_matcher->make_a_guess(super, rxn);
-            if (topo_matcher->status == TopologyMatcher::Status::ACCEPT || topo_matcher->status == TopologyMatcher::Status::REJECT) break;
-          }
-        }
-
-        // reaction site found successfully!
-        if (topo_matcher->status == TopologyMatcher::Status::ACCEPT) {
-          if (rxn.fraction < 1.0 &&
-              random[rxn.ID]->uniform() >= rxn.fraction) topo_matcher->status = TopologyMatcher::Status::REJECT;
-          else {
-            my_mega_glove[0][my_num_mega] = (double) rxn.ID;
-            if (rxn.rescale_charges_flag) my_mega_glove[1][my_num_mega] = get_totalcharge(rxn, sp.glove);
-            for (int i = 0; i < rxn.reactant->natoms; i++) {
-              my_mega_glove[i+cuff][my_num_mega] = (double) sp.glove[i];
-            }
-            my_num_mega++;
-          }
-        }
-        hang_catch++;
-        // let's go ahead and catch the simplest of hangs
-        //if (hang_catch > rxn.reactant->natoms*4)
-        if (hang_catch > atom->nlocal*30) {
-          error->one(FLERR,"Fix bond/react: Excessive iteration of superimpose algorithm. "
-              "Please check that all pre-reaction template atoms are linked to an initiator atom, "
-              "via at least one path that does not involve edge atoms.");
-        }
+        my_num_mega++;
       }
     }
   }
