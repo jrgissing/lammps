@@ -31,13 +31,13 @@ public:
   TopologyMatcher(class LAMMPS *);
   ~TopologyMatcher();
 
-  static constexpr int MAXGUESS = 20;                      // max # of guesses allowed by superimpose algorithm
+  static constexpr int MAXGUESS = 20;        // to be private              // max # of guesses allowed by superimpose algorithm
 
-  enum class Status { ACCEPT, REJECT, PROCEED,
+  enum class Status { ACCEPT, REJECT, PROCEED, // to be private
                       CONTINUE, GUESSFAIL, RESTORE };      // values for superimpose algorithm status
-  Status status;
+  Status status; // to be private
 
-  struct Superimpose {
+  struct Superimpose { // to be private. only need glove output
     int avail_guesses;                                     // num of restore points available
     std::vector<int> guess_branch;                         // used when there is more than two choices when guessing
     struct StatePoint {
@@ -46,7 +46,7 @@ public:
     } sp;
   };
 
-  std::vector<Superimpose::StatePoint> restore_pts;
+  std::vector<Superimpose::StatePoint> restore_pts; // to be private
 
   ReactionConstraints *rxn_constraints;
 

@@ -1055,10 +1055,13 @@ void FixBondReact::superimpose_algorithm()
   my_mega_glove.resize(max_natoms+cuff); // mega_glove indexing seems inside-out
   for (auto &vec : my_mega_glove) vec.resize(allnattempt, 0);
 
-  // let's finally begin the superimpose loop
+  // time to check if reaction sites match the pre-reaction template
+  // rxn_prob accounted for outside of topo_matcher
+  // reaction constraints checked inside topo_matcher
   for (auto &rxn : rxns) {
     for (auto &rxn_attempt : rxn.attempts) {
       if ( topo_matcher->match_topology(super, rxn, rxn_attempt) ) {
+        if (rxn.fraction < 1.0 && random[rxn.ID]->uniform() >= rxn.fraction) continue;
         my_mega_glove[0][my_num_mega] = (double) rxn.ID;
         if (rxn.rescale_charges_flag) my_mega_glove[1][my_num_mega] = get_totalcharge(rxn, sp.glove);
         for (int i = 0; i < rxn.reactant->natoms; i++) {

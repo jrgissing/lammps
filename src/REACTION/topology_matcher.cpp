@@ -38,15 +38,20 @@ TopologyMatcher::~TopologyMatcher()
 }
 
 /* ----------------------------------------------------------------------
+  match_topology arguments:
+    super: structure to hold global indices needed for subroutines
+    rxn: reaction instance to be matched (or not)
+    rxn_attempt: atom IDs of two simulation particles corresponding to initiator atoms
+  Overall summary:
   Set up global variables. Loop through all pairs; loop through Pioneers
   until Superimpose Algorithm is completed for each pair.
   various statuses of superimpose algorithm:
-  ACCEPT: site successfully matched to pre-reacted template
-  REJECT: site does not match pre-reacted template
-  PROCEED: normal execution (non-guessing mode)
-  CONTINUE: a neighbor has been assigned, skip to next neighbor
-  GUESSFAIL: a guess has failed (if no more restore points, status = 'REJECT')
-  RESTORE: restore mode, load most recent restore point
+    ACCEPT: site successfully matched to pre-reacted template
+    REJECT: site does not match pre-reacted template
+    PROCEED: normal execution (non-guessing mode)
+    CONTINUE: a neighbor has been assigned, skip to next neighbor
+    GUESSFAIL: a guess has failed (if no more restore points, status = 'REJECT')
+    RESTORE: restore mode, load most recent restore point
 ------------------------------------------------------------------------- */
 
 bool TopologyMatcher::match_topology(Superimpose &super, Reaction &rxn, std::array<tagint, 2> rxn_attempt)
@@ -87,14 +92,8 @@ bool TopologyMatcher::match_topology(Superimpose &super, Reaction &rxn, std::arr
           nxspecial[local_atom2][0] == nxspecial[local_atom1][0]) &&
          (nxspecial[local_atom1][0] == 0 ||
           xspecial[local_atom1][0] == atom->tag[local_atom2]) &&
-         rxn_constraints->check(rxn, sp.glove)) {
-      if (rxn.fraction < 1.0 &&
-          random[rxn.ID]->uniform() >= rxn.fraction) {
-        status = Status::REJECT;
-      } else {
-        status = Status::ACCEPT;
-      }
-    } else status = Status::REJECT;
+         rxn_constraints->check(rxn, sp.glove) ) status = Status::ACCEPT;
+    else status = Status::REJECT;
   }
 
   super.avail_guesses = 0;
@@ -129,11 +128,6 @@ bool TopologyMatcher::match_topology(Superimpose &super, Reaction &rxn, std::arr
       }
     }
 
-    // reaction site found successfully!
-    if (status == Status::ACCEPT) {
-      if (rxn.fraction < 1.0 &&
-          random[rxn.ID]->uniform() >= rxn.fraction) status = Status::REJECT;
-    }
     hang_catch++;
     // let's go ahead and catch the simplest of hangs
     //if (hang_catch > rxn.reactant->natoms*4)
