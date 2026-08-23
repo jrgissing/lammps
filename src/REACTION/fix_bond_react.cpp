@@ -122,8 +122,6 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
 
   topo_matcher = new TopologyMatcher(lmp);
 
-  rxn_constraints = new ReactionConstraints(lmp);
-
   // these group names are reserved for use exclusively by bond/react
   master_group = "bond_react_MASTER_group";
 
@@ -388,7 +386,7 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
   }
 
   // get the names of per-atom variables needed by 'rxn' functions of custom constraint
-  rxn_constraints->customvarnames(rxns);
+  topo_matcher->rxn_constraints->customvarnames(rxns);
 
   // initialize Marsaglia RNG with processor-unique seed (Arrhenius prob)
   for (auto &rxn : rxns)
@@ -458,7 +456,6 @@ FixBondReact::~FixBondReact()
   delete[] random;
 
   delete topo_matcher;
-  delete rxn_constraints;
   delete reset_mol_ids;
 
   memory->destroy(partner);
@@ -692,7 +689,7 @@ void FixBondReact::post_integrate()
   // reset 'rxn_attempt' counts
   for (auto &rxn : rxns) rxn.attempts.clear();
   // reset per-bond compute map flag
-  rxn_constraints->atoms2bondflag = 0;
+  topo_matcher->rxn_constraints->atoms2bondflag = 0;
 
   int nlocal = atom->nlocal;
   int nall = atom->nlocal + atom->nghost;
@@ -834,9 +831,9 @@ void FixBondReact::post_integrate()
   }
 
   // evaluate custom constraint variable values here and forward_comm
-  rxn_constraints->get_customvars(igroup);
+  topo_matcher->rxn_constraints->get_customvars(igroup);
   commflag = 1;
-  comm->forward_comm(this,rxn_constraints->ncustomvars);
+  comm->forward_comm(this,topo_matcher->rxn_constraints->ncustomvars);
 
   // run through the superimpose algorithm
   // this checks if simulation topology matches unreacted mol template
@@ -1058,8 +1055,8 @@ void FixBondReact::superimpose_algorithm()
   // glove: global IDs. index indicates is pre-reaction ID-1, value is mapped sim atom ID
   // glove_counter: used to determine when to terminate Superimpose Algorithm
 
-  Superimpose super;
-  Superimpose::StatePoint &sp = super.sp;
+  TopologyMatcher::Superimpose super;
+  TopologyMatcher::Superimpose::StatePoint &sp = super.sp;
   int &avail_guesses = super.avail_guesses;
   std::vector<int> &guess_branch = super.guess_branch;
   guess_branch.resize(MAXGUESS, 0);
@@ -1101,7 +1098,7 @@ void FixBondReact::superimpose_algorithm()
               nxspecial[local_atom2][0] == nxspecial[local_atom1][0]) &&
              (nxspecial[local_atom1][0] == 0 ||
               xspecial[local_atom1][0] == atom->tag[local_atom2]) &&
-             rxn_constraints->check(rxn, sp.glove)) {
+             topo_matcher->rxn_constraints->check(rxn, sp.glove)) {
           if (rxn.fraction < 1.0 &&
               random[rxn.ID]->uniform() >= rxn.fraction) {
             topo_matcher->status = TopologyMatcher::Status::REJECT;
@@ -1333,9 +1330,9 @@ void FixBondReact::superimpose_algorithm()
   has failed: check for available restore points.
 ------------------------------------------------------------------------- */
 
-void FixBondReact::make_a_guess(Superimpose &super, Reaction &rxn)
+void FixBondReact::make_a_guess(TopologyMatcher::Superimpose &super, Reaction &rxn)
 {
-  Superimpose::StatePoint &sp = super.sp;
+  TopologyMatcher::Superimpose::StatePoint &sp = super.sp;
   int &avail_guesses = super.avail_guesses;
 
   int *type = atom->type;
@@ -1425,9 +1422,9 @@ void FixBondReact::make_a_guess(Superimpose &super, Reaction &rxn)
   Prepare appropriately if we are in Restore Mode.
 ------------------------------------------------------------------------- */
 
-void FixBondReact::neighbor_loop(Superimpose &super, Reaction &rxn)
+void FixBondReact::neighbor_loop(TopologyMatcher::Superimpose &super, Reaction &rxn)
 {
-  Superimpose::StatePoint &sp = super.sp;
+  TopologyMatcher::Superimpose::StatePoint &sp = super.sp;
 
   int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
 
@@ -1449,9 +1446,9 @@ void FixBondReact::neighbor_loop(Superimpose &super, Reaction &rxn)
   without guessing. If so, do it! If not, call crosscheck_the_nieghbor().
 ------------------------------------------------------------------------- */
 
-void FixBondReact::check_a_neighbor(Superimpose &super, Reaction &rxn)
+void FixBondReact::check_a_neighbor(TopologyMatcher::Superimpose &super, Reaction &rxn)
 {
-  Superimpose::StatePoint &sp = super.sp;
+  TopologyMatcher::Superimpose::StatePoint &sp = super.sp;
 
   int *type = atom->type;
   int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
@@ -1489,7 +1486,7 @@ void FixBondReact::check_a_neighbor(Superimpose &super, Reaction &rxn)
 
             sp.glove_counter++;
             if (sp.glove_counter == rxn.reactant->natoms) {
-              if (TopologyMatcher(lmp).ring_check(rxn, sp.glove) && rxn_constraints->check(rxn, sp.glove)) topo_matcher->status = TopologyMatcher::Status::ACCEPT;
+              if (TopologyMatcher(lmp).ring_check(rxn, sp.glove) && topo_matcher->rxn_constraints->check(rxn, sp.glove)) topo_matcher->status = TopologyMatcher::Status::ACCEPT;
               else topo_matcher->status = TopologyMatcher::Status::GUESSFAIL;
               return;
             }
@@ -1542,7 +1539,7 @@ void FixBondReact::check_a_neighbor(Superimpose &super, Reaction &rxn)
 
         sp.glove_counter++;
         if (sp.glove_counter == rxn.reactant->natoms) {
-          if (TopologyMatcher(lmp).ring_check(rxn, sp.glove) && rxn_constraints->check(rxn, sp.glove)) topo_matcher->status = TopologyMatcher::Status::ACCEPT;
+          if (TopologyMatcher(lmp).ring_check(rxn, sp.glove) && topo_matcher->rxn_constraints->check(rxn, sp.glove)) topo_matcher->status = TopologyMatcher::Status::ACCEPT;
           else topo_matcher->status = TopologyMatcher::Status::GUESSFAIL;
           return;
           // will never complete here when there are edge atoms
@@ -1561,15 +1558,15 @@ void FixBondReact::check_a_neighbor(Superimpose &super, Reaction &rxn)
   guess by recording a restore point.
 ------------------------------------------------------------------------- */
 
-void FixBondReact::crosscheck_the_neighbor(Superimpose &super, Reaction &rxn)
+void FixBondReact::crosscheck_the_neighbor(TopologyMatcher::Superimpose &super, Reaction &rxn)
 {
-  Superimpose::StatePoint &sp = super.sp;
+  TopologyMatcher::Superimpose::StatePoint &sp = super.sp;
   int &avail_guesses = super.avail_guesses;
 
   int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
 
   if (topo_matcher->status == TopologyMatcher::Status::RESTORE) {
-    inner_crosscheck_loop(super, rxn);
+    topo_matcher->inner_crosscheck_loop(super, rxn);
     return;
   }
 
@@ -1597,95 +1594,11 @@ void FixBondReact::crosscheck_the_neighbor(Superimpose &super, Reaction &rxn)
       restore_pts[avail_guesses-1].trace = sp.trace;
       restore_pts[avail_guesses-1].glove_counter = sp.glove_counter;
 
-      inner_crosscheck_loop(super, rxn);
+      topo_matcher->inner_crosscheck_loop(super, rxn);
       return;
     }
   }
   // status is still 'PROCEED' if we are here!
-}
-
-/* ----------------------------------------------------------------------
-  We are ready to make a guess. If there are multiple possible choices
-  for this guess, keep track of these.
-------------------------------------------------------------------------- */
-
-void FixBondReact::inner_crosscheck_loop(Superimpose &super, Reaction &rxn)
-{
-  Superimpose::StatePoint &sp = super.sp;
-  int &avail_guesses = super.avail_guesses;
-  std::vector<int> &guess_branch = super.guess_branch;
-
-  int *type = atom->type;
-  // arbitrarily limited to 5 identical first neighbors
-  tagint tag_choices[5];
-  int nfirst_neighs = rxn.reactant->nspecial[sp.pion][0];
-
-  int num_choices = 0;
-  for (int i = 0; i < nfirst_neighs; i++) {
-    int checktype = type[(int)atom->map(xspecial[atom->map(sp.glove[sp.pion])][i])];
-    int reactant_atom = (int) rxn.reactant->special[sp.pion][sp.neigh];
-    if (compare_atomtype(checktype, rxn, reactant_atom)) {
-      if (num_choices == 5) { // here failed because too many identical first neighbors. but really no limit if situation arises
-        topo_matcher->status = TopologyMatcher::Status::GUESSFAIL;
-        return;
-      }
-      tag_choices[num_choices++] = xspecial[atom->map(sp.glove[sp.pion])][i];
-    }
-  }
-
-  // guess branch is for when multiple identical neighbors. then we guess each one in turn
-  // guess_branch must work even when avail_guesses = 0. so index accordingly!
-  // ...actually, avail_guesses should never be zero here anyway
-  if (guess_branch[avail_guesses-1] == 0) guess_branch[avail_guesses-1] = num_choices;
-
-  for (int i=1; i < num_choices; ++i) {
-    tagint hold = tag_choices[i];
-    int j = i - 1;
-    while ((j >= 0) && (tag_choices[j] > hold)) {
-      tag_choices[j+1] = tag_choices[j];
-      --j;
-    }
-    tag_choices[j+1] = hold;
-  }
-
-  for (int i = guess_branch[avail_guesses-1]-1; i >= 0; i--) {
-    int already_assigned = 0;
-    for (int j = 0; j < rxn.reactant->natoms; j++) {
-      if (sp.glove[j] == tag_choices[i]) {
-        already_assigned = 1;
-        break;
-      }
-    }
-    if (already_assigned == 1) {
-      guess_branch[avail_guesses-1]--;
-      if (guess_branch[avail_guesses-1] == 0) {
-        topo_matcher->status = TopologyMatcher::Status::REJECT;
-        return;
-      }
-    } else {
-      sp.glove[rxn.reactant->special[sp.pion][sp.neigh]-1] = tag_choices[i];
-      guess_branch[avail_guesses-1]--;
-      break;
-    }
-  }
-
-  //another check for ghost atoms. perhaps remove the one in make_a_guess
-  if (atom->map(sp.glove[(int)rxn.reactant->special[sp.pion][sp.neigh]-1]) < 0) {
-    error->one(FLERR,"Fix bond/react: Fix bond/react needs ghost atoms from further away");
-  }
-
-  if (guess_branch[avail_guesses-1] == 0) avail_guesses--;
-
-  for (int i = 0; i < rxn.reactant->nspecial[rxn.reactant->special[sp.pion][sp.neigh]-1][0]; i++) {
-    sp.pioneer_count[rxn.reactant->special[rxn.reactant->special[sp.pion][sp.neigh]-1][i]-1]++;
-  }
-  sp.glove_counter++;
-  if (sp.glove_counter == rxn.reactant->natoms) {
-    if (TopologyMatcher(lmp).ring_check(rxn, sp.glove) && rxn_constraints->check(rxn, sp.glove)) topo_matcher->status = TopologyMatcher::Status::ACCEPT;
-    else topo_matcher->status = TopologyMatcher::Status::GUESSFAIL;
-    return;
-  }
-  topo_matcher->status = TopologyMatcher::Status::CONTINUE;
 }
 
 /* ----------------------------------------------------------------------
@@ -3265,7 +3178,7 @@ int FixBondReact::insert_atoms_setup(tagint **my_update_mega_glove, int iupdate,
     // note: row_offset for my_update_mega_glove is unity, not 'cuff'
     std::vector<tagint> myglove(rxn.reactant->natoms);
     for (int i = 0; i < rxn.reactant->natoms; i++) myglove[i] = my_update_mega_glove[i+1][iupdate];
-    t = rxn_constraints->get_temperature(myglove);
+    t = topo_matcher->rxn_constraints->get_temperature(myglove);
 
     double **xfrozen; // coordinates for the "frozen" target molecule
     double **xmobile; // coordinates for the "mobile" molecule
@@ -3522,8 +3435,8 @@ int FixBondReact::pack_forward_comm(int n, int *list, double *buf,
   if (commflag == 1) {
     for (i = 0; i < n; i++) {
       j = list[i];
-      for (k = 0; k < rxn_constraints->ncustomvars; k++)
-        buf[m++] = rxn_constraints->vvec[j][k];
+      for (k = 0; k < topo_matcher->rxn_constraints->ncustomvars; k++)
+        buf[m++] = topo_matcher->rxn_constraints->vvec[j][k];
     }
     return m;
   }
@@ -3559,8 +3472,8 @@ void FixBondReact::unpack_forward_comm(int n, int first, double *buf)
 
   if (commflag == 1) {
     for (i = first; i < last; i++)
-      for (k = 0; k < rxn_constraints->ncustomvars; k++)
-        rxn_constraints->vvec[i][k] = buf[m++];
+      for (k = 0; k < topo_matcher->rxn_constraints->ncustomvars; k++)
+        topo_matcher->rxn_constraints->vvec[i][k] = buf[m++];
   } else if (commflag == 2) {
     for (i = first; i < last; i++)
       partner[i] = (tagint) ubuf(buf[m++]).i;

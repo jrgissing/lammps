@@ -26,7 +26,6 @@ FixStyle(bond/react,FixBondReact);
 
 #include "fix.h"
 #include "reaction.h"
-#include "reaction_constraints.h"
 #include "topology_matcher.h"
 
 #include <array>
@@ -83,7 +82,6 @@ class FixBondReact : public Fix {
   int rescale_charges_anyflag;                             // indicates if any reactions do charge rescaling
 
   std::vector<Reaction> rxns;
-  ReactionConstraints *rxn_constraints;
   TopologyMatcher *topo_matcher;
 
   int nmax;                                                // max num local atoms
@@ -112,15 +110,7 @@ class FixBondReact : public Fix {
   int countflag, commflag;
   int nlevels_respa;
 
-  struct Superimpose {
-    int avail_guesses;                                     // num of restore points available
-    std::vector<int> guess_branch;                         // used when there is more than two choices when guessing
-    struct StatePoint {
-      int pion, neigh, trace, glove_counter;
-      std::vector<tagint> glove, pioneer_count, pioneers;
-    } sp;
-  };
-  std::vector<Superimpose::StatePoint> restore_pts;
+  std::vector<TopologyMatcher::Superimpose::StatePoint> restore_pts;
 
   int **nxspecial;                                         // full number of 1-4 neighbors
   tagint **xspecial;                                       // full 1-4 neighbor list
@@ -145,11 +135,10 @@ class FixBondReact : public Fix {
   int vizsteps;                    // number of steps to highlight atoms in reactions
 
   void superimpose_algorithm();
-  void make_a_guess(Superimpose &, Reaction &);
-  void neighbor_loop(Superimpose &, Reaction &);
-  void check_a_neighbor(Superimpose &, Reaction &);
-  void crosscheck_the_neighbor(Superimpose &, Reaction &);
-  void inner_crosscheck_loop(Superimpose &, Reaction &);
+  void make_a_guess(TopologyMatcher::Superimpose &, Reaction &);
+  void neighbor_loop(TopologyMatcher::Superimpose &, Reaction &);
+  void check_a_neighbor(TopologyMatcher::Superimpose &, Reaction &);
+  void crosscheck_the_neighbor(TopologyMatcher::Superimpose &, Reaction &);
   bool compare_atomtype(int, Reaction &, int);
   double get_totalcharge(Reaction &, std::vector<tagint> &);
 

@@ -20,6 +20,7 @@
 
 #include "pointers.h"    // IWYU pragma: export
 #include "reaction.h"
+#include "reaction_constraints.h"
 
 #include <vector>
 
@@ -27,15 +28,29 @@ namespace LAMMPS_NS {
 
 class TopologyMatcher : protected Pointers {
 public:
-  TopologyMatcher(class LAMMPS *);// : Pointers(lmp) {}
+  TopologyMatcher(class LAMMPS *);
+  ~TopologyMatcher();
 
   enum class Status { ACCEPT, REJECT, PROCEED,
                       CONTINUE, GUESSFAIL, RESTORE };      // values for superimpose algorithm status
   Status status;
 
+  struct Superimpose {
+    int avail_guesses;                                     // num of restore points available
+    std::vector<int> guess_branch;                         // used when there is more than two choices when guessing
+    struct StatePoint {
+      int pion, neigh, trace, glove_counter;
+      std::vector<tagint> glove, pioneer_count, pioneers;
+    } sp;
+  };
+
+  ReactionConstraints *rxn_constraints;
+
   int ring_check(Reaction &, std::vector<tagint> &);
+  void inner_crosscheck_loop(Superimpose &, Reaction &); //to be private
 
 private:
+  bool compare_atomtype(int, Reaction &, int);
 };
 
 }    // namespace LAMMPS_NS
