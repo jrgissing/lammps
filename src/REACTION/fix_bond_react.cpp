@@ -271,15 +271,13 @@ FixBondReact::FixBondReact(LAMMPS *lmp, int narg, char **arg) :
     iarg++;
 
     int rxn_narg = 0;
-    while (iarg < narg && arg[iarg] != rxn_keyword) {
-      rxn_narg++;
-      iarg++;
-    }
+    for (int j = iarg; j < narg && arg[j] != rxn_keyword; j++) rxn_narg++;
 
     // input to parse_reaction_parser is one reaction definition (pre/post reaction templates, map file, bond/react keywords)
 
     rxn.ID = id++;
-    ReactionParser(lmp).parse_reaction(arg, iarg-rxn_narg, rxn_narg, rxn);
+    ReactionParser(lmp).parse_reaction(arg, iarg, iarg+rxn_narg, rxn);
+    iarg += rxn_narg;
 
     if (rxn.stabilize_steps_flag == 1 && stabilization_flag == 0)
       error->all(FLERR,"Stabilize_steps keyword used without stabilization keyword");

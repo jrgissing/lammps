@@ -27,6 +27,8 @@ using namespace LAMMPS_NS;
 
 TopologyMatcher::TopologyMatcher(LAMMPS *lmp) : Pointers(lmp) {
 
+  // checking reaction constraints inside topology_matcher
+
   rxn_constraints = new ReactionConstraints(lmp);
 
   status = Status::PROCEED;
@@ -54,7 +56,7 @@ TopologyMatcher::~TopologyMatcher()
     RESTORE: restore mode, load most recent restore point
 ------------------------------------------------------------------------- */
 
-bool TopologyMatcher::match_topology(std::vector<tagint> &outglove, Reaction rxn, std::array<tagint, 2> rxn_attempt)
+bool TopologyMatcher::match_topology(std::vector<tagint> &outglove, Reaction &rxn, std::array<tagint, 2> rxn_attempt)
 {
   // full special lists - may need correction for unusual special bond settings
   int **nxspecial = atom->nspecial;
@@ -161,7 +163,7 @@ bool TopologyMatcher::match_topology(std::vector<tagint> &outglove, Reaction rxn
   has failed: check for available restore points.
 ------------------------------------------------------------------------- */
 
-void TopologyMatcher::make_a_guess(Superimpose &super, Reaction rxn)
+void TopologyMatcher::make_a_guess(Superimpose &super, Reaction &rxn)
 {
   // full special lists - may need correction for unusual special bond settings
   int **nxspecial = atom->nspecial;
@@ -257,7 +259,7 @@ void TopologyMatcher::make_a_guess(Superimpose &super, Reaction rxn)
   Prepare appropriately if we are in Restore Mode.
 ------------------------------------------------------------------------- */
 
-void TopologyMatcher::neighbor_loop(Superimpose &super, Reaction rxn)
+void TopologyMatcher::neighbor_loop(Superimpose &super, Reaction &rxn)
 {
   Superimpose::StatePoint &sp = super.sp;
 
@@ -281,7 +283,7 @@ void TopologyMatcher::neighbor_loop(Superimpose &super, Reaction rxn)
   without guessing. If so, do it! If not, call crosscheck_the_nieghbor().
 ------------------------------------------------------------------------- */
 
-void TopologyMatcher::check_a_neighbor(Superimpose &super, Reaction rxn)
+void TopologyMatcher::check_a_neighbor(Superimpose &super, Reaction &rxn)
 {
   // full special lists - may need correction for unusual special bond settings
   int **nxspecial = atom->nspecial;
@@ -397,7 +399,7 @@ void TopologyMatcher::check_a_neighbor(Superimpose &super, Reaction rxn)
   guess by recording a restore point.
 ------------------------------------------------------------------------- */
 
-void TopologyMatcher::crosscheck_the_neighbor(Superimpose &super, Reaction rxn)
+void TopologyMatcher::crosscheck_the_neighbor(Superimpose &super, Reaction &rxn)
 {
   Superimpose::StatePoint &sp = super.sp;
   int &avail_guesses = super.avail_guesses;
@@ -445,7 +447,7 @@ void TopologyMatcher::crosscheck_the_neighbor(Superimpose &super, Reaction rxn)
   for this guess, keep track of these.
 ------------------------------------------------------------------------- */
 
-void TopologyMatcher::inner_crosscheck_loop(Superimpose &super, Reaction rxn)
+void TopologyMatcher::inner_crosscheck_loop(Superimpose &super, Reaction &rxn)
 {
   // full special lists - may need correction for unusual special bond settings
   int **nxspecial = atom->nspecial;
@@ -533,7 +535,7 @@ void TopologyMatcher::inner_crosscheck_loop(Superimpose &super, Reaction rxn)
   Necessary for certain ringed structures
 ------------------------------------------------------------------------- */
 
-int TopologyMatcher::ring_check(Reaction rxn, std::vector<tagint> glove)
+int TopologyMatcher::ring_check(Reaction &rxn, const std::vector<tagint> &glove)
 {
   // full special lists - may need correction for unusual special bond settings
   int **nxspecial = atom->nspecial;
@@ -569,7 +571,7 @@ int TopologyMatcher::ring_check(Reaction rxn, std::vector<tagint> glove)
 check if an atom type matches that of a reactant atom
 ------------------------------------------------------------------------- */
 
-bool TopologyMatcher::compare_atomtype(int checktype, Reaction rxn, int reactant_atom)
+bool TopologyMatcher::compare_atomtype(int checktype, Reaction &rxn, int reactant_atom)
 {
   int iatom = reactant_atom - 1; // index of reactant atom
   if (checktype == rxn.reactant->type[iatom] || rxn.atoms[iatom].wildcard) return true;
