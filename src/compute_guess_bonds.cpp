@@ -25,7 +25,6 @@
 #include "update.h"
 
 #include <cstring>
-#include <cstdio>
 
 using namespace LAMMPS_NS;
 
@@ -40,7 +39,6 @@ ComputeGuessBonds::ComputeGuessBonds(LAMMPS *lmp, int narg, char **arg) :
 
   if (narg < 7) utils::missing_cmd_args(FLERR,"compute guess_bonds", error);
   dynamic_group_allow = 1;
-  //ncol = atom->bond_per_atom + 1;
   if (strcmp(arg[3],"radii") != 0) error->all(FLERR,"Unknown compute guess_bonds keyword {}", arg[3]);
   prefactor = utils::numeric(FLERR, arg[4], false, lmp);
   int ntypes = atom->ntypes;
@@ -55,6 +53,7 @@ ComputeGuessBonds::ComputeGuessBonds(LAMMPS *lmp, int narg, char **arg) :
     switch (utils::is_type(typestr)) {
       case 0: {    // numeric
         mytype = utils::inumeric(FLERR, typestr, false, lmp);
+        break;
       }
       case 1: {    // type label
         if (!atom->labelmapflag)
@@ -106,11 +105,8 @@ void ComputeGuessBonds::init_list(int /*id*/, NeighList *ptr)
 
 void ComputeGuessBonds::init()
 {
+  // would be faster to communicate myself instead of use full list
   auto *req = neighbor->add_request(this, NeighConst::REQ_FULL | NeighConst::REQ_OCCASIONAL);
-  //auto *req = neighbor->add_request(this, NeighConst::REQ_FULL); //OCCASIONAL);
-  //int irequest = neighbor->request(this, instance_me);
- // neighbor->requests[req]->half = 0; // Disable default half list
-  //neighbor->requests[req]->full = 1; // Request full list
 }
 
 /* ---------------------------------------------------------------------- */
@@ -229,18 +225,8 @@ void ComputeGuessBonds::compute_peratom()
             break;
           }
         }
-        //if (duplicate) printf("here was a duplicate!\n");
         if (!duplicate)
           carray[atom1][(int) ++carray[atom1][0]] = tag[atom2];
-          
-        //// confirm not duplicate
-        //bool duplicate = false;
-        //for (int iii = 0; iii < nchoose; iii++) {
-        //  if () {
-        //    
-        //  }
-        //}
-        //carray[atom1][(int) ++carray[atom1][0]] = tag[atom2];
       }
     }
   }

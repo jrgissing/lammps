@@ -40,7 +40,6 @@ class ComputeGuessBonds : public Compute {
   std::vector<double> radii;
   std::vector<std::vector<double>> cutsq;
   int maxlocal;        // size of atom selection and variable arrays
-  //int ncol;            // number of columns is atom->bond_per_atom + 1
   double **carray;     // first column is num_bonds, rest list tags of bonded atoms
   int nchoose;         // # of selected atoms
   double *buf;         // memory for atom quantities
