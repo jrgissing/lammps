@@ -28,14 +28,23 @@ class FixGuessBonds : public Fix {
  public:
   FixGuessBonds(class LAMMPS *, int, char **);
   //~FixGuessBonds() override;
+  void post_constructor() override;
   int setmask() override;
   void end_of_step() override;
 
  private:
+  std::string groupid;
+  std::string radii_list;
+  int nevery_history;      // store a history frame once every Nevery steps
+  int nrepeat_history;     // # of history frames to store
+  int nfreq_history;       // enable output of stored history on these steps
+  int bond_order_cutoff;   // cutoff for average 'bond order' that results in bond
+
   double prefactor;
   std::vector<double> radii;
   std::vector<std::vector<double>> cutsq;
   class ComputeGuessBonds *cgb;
+  class FixStoreState *fss;
 };
 
 }    // namespace LAMMPS_NS

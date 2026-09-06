@@ -22,8 +22,10 @@
 #include "memory.h"
 #include "neigh_list.h"
 #include "neighbor.h"
+#include "update.h"
 
 #include <cstring>
+#include <cstdio>
 
 using namespace LAMMPS_NS;
 
@@ -32,9 +34,13 @@ using namespace LAMMPS_NS;
 ComputeGuessBonds::ComputeGuessBonds(LAMMPS *lmp, int narg, char **arg) :
     Compute(lmp, narg, arg), choose(nullptr), clist(nullptr), chooseghost(nullptr), bufcopy(nullptr),  carray(nullptr)
 {
+  peratom_flag = 1;
+  size_peratom_cols = atom->bond_per_atom + 1;
+
+
   if (narg < 7) utils::missing_cmd_args(FLERR,"compute guess_bonds", error);
   dynamic_group_allow = 1;
-  ncol = atom->bond_per_atom + 1;
+  //ncol = atom->bond_per_atom + 1;
   if (strcmp(arg[3],"radii") != 0) error->all(FLERR,"Unknown compute guess_bonds keyword {}", arg[3]);
   prefactor = utils::numeric(FLERR, arg[4], false, lmp);
   int ntypes = atom->ntypes;
@@ -100,13 +106,19 @@ void ComputeGuessBonds::init_list(int /*id*/, NeighList *ptr)
 
 void ComputeGuessBonds::init()
 {
-  auto *req = neighbor->add_request(this, NeighConst::REQ_OCCASIONAL);
+  auto *req = neighbor->add_request(this, NeighConst::REQ_FULL | NeighConst::REQ_OCCASIONAL);
+  //auto *req = neighbor->add_request(this, NeighConst::REQ_FULL); //OCCASIONAL);
+  //int irequest = neighbor->request(this, instance_me);
+ // neighbor->requests[req]->half = 0; // Disable default half list
+  //neighbor->requests[req]->full = 1; // Request full list
 }
 
 /* ---------------------------------------------------------------------- */
 
 void ComputeGuessBonds::compute_peratom()
 {
+  invoked_peratom = update->ntimestep;
+
   int i,j,m,atom1,atom2;
 
   neighbor->build_one(list);
@@ -129,7 +141,7 @@ void ComputeGuessBonds::compute_peratom()
   if (atom->nmax > maxlocal) {
     maxlocal = atom->nmax;
     memory->destroy(carray);
-    memory->create(carray, maxlocal, ncol, "guess_bonds:carray");
+    memory->create(carray, maxlocal, size_peratom_cols, "guess_bonds:carray");
     array_atom = carray;
 
     //if (choose)
@@ -207,7 +219,28 @@ void ComputeGuessBonds::compute_peratom()
         if (carray[atom1][0] == atom->bond_per_atom)
           error->one(FLERR, "New bond exceeded bonds per atom limit of {} in compute guess_bonds",
                      atom->bond_per_atom);
-        carray[atom1][(int) ++carray[atom1][0]] = tag[atom2];
+
+
+        bool duplicate = false;
+        int nb = (int) carray[atom1][0];
+        for (int iii = 0; iii < nb; iii++) {
+          if (carray[atom1][iii+1] == tag[atom2]) {
+            duplicate = true;
+            break;
+          }
+        }
+        //if (duplicate) printf("here was a duplicate!\n");
+        if (!duplicate)
+          carray[atom1][(int) ++carray[atom1][0]] = tag[atom2];
+          
+        //// confirm not duplicate
+        //bool duplicate = false;
+        //for (int iii = 0; iii < nchoose; iii++) {
+        //  if () {
+        //    
+        //  }
+        //}
+        //carray[atom1][(int) ++carray[atom1][0]] = tag[atom2];
       }
     }
   }
