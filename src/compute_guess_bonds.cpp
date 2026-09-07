@@ -41,10 +41,10 @@ ComputeGuessBonds::ComputeGuessBonds(LAMMPS *lmp, int narg, char **arg) :
   if (narg < 7) utils::missing_cmd_args(FLERR,"compute guess_bonds", error);
   dynamic_group_allow = 1;
 
-  int guess_mode;      // distance vs pauling keywords
-  if (strcmp(arg[3],"distance" != 0 ) {
+  GuessMode guess_mode;      // distance vs pauling keywords
+  if (strcmp(arg[3],"distance") != 0) {
     guess_mode = GuessMode::DISTANCE;
-  } else if (strcmp(arg[3],"pauling" != 0 ) {
+  } else if (strcmp(arg[3],"pauling") != 0) {
     guess_mode = GuessMode::PAULING;
   } else error->all(FLERR,"Unknown compute guess_bonds keyword {}", arg[3]);
 
@@ -117,7 +117,7 @@ ComputeGuessBonds::ComputeGuessBonds(LAMMPS *lmp, int narg, char **arg) :
             if (!atom->labelmapflag)
               error->all(FLERR, "Invalid atom type {} in compute guess_bonds", typestr);
             mytypes[i] = atom->lmap->find_type(typestr, Atom::ATOM);
-            if (mytype == -1)
+            if (mytypes[i] == -1)
               error->all(FLERR, "Unknown atom type {} in compute guess_bonds", typestr);
             break;
           }
@@ -145,7 +145,8 @@ ComputeGuessBonds::ComputeGuessBonds(LAMMPS *lmp, int narg, char **arg) :
 
     for (int i = 0; i < ntypes; i++) {
       for (int j = 0; j < ntypes; j++) {
-        cutsq[i][j] = (bond_length[i][j] - bond_softness[i][j] * std::log(bond_order_cutoff)) ** 2
+        cutsq[i][j] = bond_length[i][j] - bond_softness[i][j] * std::log(bond_order_cutoff);
+        cutsq[i][j] *= cutsq[i][j];
       }
     }
   }
