@@ -38,7 +38,7 @@ class FixGuessBonds : public Fix {
   int nevery_history;      // store a history frame once every Nevery steps
   int nrepeat_history;     // # of history frames to store
   int nfreq_history;       // enable output of stored history on these steps
-  int bond_order_cutoff;   // cutoff for average 'bond order' that results in bond
+  int bonded_fraction;     // cutoff for fraction of sampled timesteps that bond exists
 
   double prefactor;
   std::vector<double> radii;

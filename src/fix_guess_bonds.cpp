@@ -43,7 +43,7 @@ FixGuessBonds::FixGuessBonds(LAMMPS *lmp, int narg, char **arg) :
   nevery_history = utils::inumeric(FLERR, arg[3], false, lmp);
   nrepeat_history = utils::inumeric(FLERR, arg[4], false, lmp);
   nfreq_history = utils::inumeric(FLERR, arg[5], false, lmp);
-  bond_order_cutoff = utils::numeric(FLERR, arg[6], false, lmp);
+  bonded_fraction = utils::numeric(FLERR, arg[6], false, lmp);
 
   if (strcmp(arg[7],"radii") != 0) error->all(FLERR,"Unknown fix guess_bonds keyword {}", arg[6]);
 
@@ -165,7 +165,7 @@ void FixGuessBonds::end_of_step()
     int num_ave_bonds = ave_bond_atoms[i][0];
     for (int j = 0; j < num_ave_bonds; j++) {
       ave_bond_persistence[i][j+1] /= nrepeat_history;
-      if (ave_bond_persistence[i][j+1] > bond_order_cutoff) {
+      if (ave_bond_persistence[i][j+1] > bonded_fraction) {
         tagint tag_j = ave_bond_atoms[i][j+1];
 
         if (force->newton_bond && atom->tag[i] > tag_j) continue;
