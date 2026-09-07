@@ -15,7 +15,7 @@ Syntax
 * Nevery = accumulate atom attributes once every this many steps
 * Nrepeat = # of times to accumulate atom attributes
 * Nfreq = make stored atom attributes (history) available every this many steps
-* bond_order_cutoff = add bond if average bond order above this values
+* fraction = add bond if a bond was present for at least this fraction of sampled timesteps (value between 0.0 and 1.0)
 * mode can be either *distance* or *pauling*
 
   .. parsed-literal::
@@ -23,17 +23,18 @@ Syntax
        *distance* values = prefactor args
          prefactor = tolerance factor when guessing bonds
          args = list of atom type/radius pairs
-       *pauling* values = args
-         args = list of each atom type pair followed by thier equilibrium bond distance and bond softness parameter
+       *pauling* values = BOcut args
+         BOcut = bond order cutoff to decide if bond exists
+         args = list of each atom type pair followed by their equilibrium bond distance and bond softness parameter
 
 Examples
 """"""""
 
 .. code-block:: LAMMPS
 
-   fix 1 all guess_bonds 10 10 100 0.3 distance 1.15 c1 0.70 hc 0.37 oc 0.6 n 0.65
-   fix 1 all guess_bonds 10 10 100 0.3 &
-     pauling C C 1.54 0.353 C H 1.09 0.399 C O 1.43 0.279 C N 1.47 0.298 O N 1.44 0.26
+   fix 1 all guess_bonds 10 10 100 0.5 distance 1.15 c1 0.70 hc 0.37 oc 0.6 n 0.65
+   fix 1 all guess_bonds 10 10 100 0.5 &
+     pauling 0.3 C C 1.54 0.353 C H 1.09 0.399 C O 1.43 0.279 C N 1.47 0.298 O N 1.44 0.26
 
 Description
 """""""""""
@@ -53,11 +54,14 @@ algorithmic purposes.
 
 The *Nevery*, *Nrepeat*, and *Nfreq* values are used for an internally-
 created :doc:`fix store/state <fix_store_state>` command that saves bond
-history. If the average bond order over all Nrepeat values is a bond is
-greater than *bond_order_cutoff*, then this fix assigns a bond. The
-bonds identified by this fix are added as explicit bonds so that the
-geometry of bond pairs is accessible to other commands. A bond type of
-1 is assigned to all bonds added by this fix.
+history. If the fraction of times that is a bond is identified, out of
+*Nrepeat* sampled timesteps, is greater than *fraction*, then this fix
+assigns a bond. For example if *fraction* = 0.5, and a bond was
+identified between atoms *i* and *j* for 60 of the 100 previously
+sampled timesteps, then a bond is added between atom *i* and *j* on the
+current timestep. The bonds identified by this fix are added as explicit
+bonds so that the geometry of bond pairs is accessible to other
+commands. A bond type of 1 is assigned to all bonds added by this fix.
 
 .. note::
 
@@ -73,7 +77,7 @@ geometry of bond pairs is accessible to other commands. A bond type of
 Bond order is calculated differently depending on whether the *distance*
 or *pauling* mode is specified.
 
-In *distance* mode, if a bond satifies the distance cutoff criterion on
+In *distance* mode, if a bond satisfies the distance cutoff criterion on
 a given timestep, it is assigned a bond order of 1.0, otherwise it is
 assigned a bond order of 0.0. In *distance* mode, the distance cutoff is
 defined by the following equation:
@@ -91,7 +95,7 @@ are removed. The prefactor must be provided directly after the
 following the prefactor, where the numeric atom type or type label is
 followed by the atomic radius (see example above).
 
-In *pauling* mode, the bond order is calculated with the follwing equation:
+In *pauling* mode, the bond order is calculated with the following equation:
 
 .. math::
 
