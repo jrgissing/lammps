@@ -33,52 +33,120 @@ using namespace LAMMPS_NS;
 ComputeGuessBonds::ComputeGuessBonds(LAMMPS *lmp, int narg, char **arg) :
     Compute(lmp, narg, arg), choose(nullptr), clist(nullptr), chooseghost(nullptr), bufcopy(nullptr),  carray(nullptr)
 {
+  enum class GuessMode { DISTANCE, PAULING };            // values for reset_mol_ids keyword
   peratom_flag = 1;
   size_peratom_cols = atom->bond_per_atom + 1;
 
 
   if (narg < 7) utils::missing_cmd_args(FLERR,"compute guess_bonds", error);
   dynamic_group_allow = 1;
-  if (strcmp(arg[3],"radii") != 0) error->all(FLERR,"Unknown compute guess_bonds keyword {}", arg[3]);
-  prefactor = utils::numeric(FLERR, arg[4], false, lmp);
+
+  int guess_mode;      // distance vs pauling keywords
+  if (strcmp(arg[3],"distance" != 0 ) {
+    guess_mode = GuessMode::DISTANCE;
+  } else if (strcmp(arg[3],"pauling" != 0 ) {
+    guess_mode = GuessMode::PAULING;
+  } else error->all(FLERR,"Unknown compute guess_bonds keyword {}", arg[3]);
+
   int ntypes = atom->ntypes;
-  radii.resize(ntypes);
   cutsq.resize(ntypes);
   for (auto &row : cutsq) row.resize(ntypes);
 
-  int iarg = 5;
-  int mytype;
-  while (iarg < narg) {
-    std::string typestr = utils::utf8_subst(arg[iarg]);
-    switch (utils::is_type(typestr)) {
-      case 0: {    // numeric
-        mytype = utils::inumeric(FLERR, typestr, false, lmp);
-        break;
+  if (guess_mode == GuessMode::DISTANCE) {
+
+    double prefactor = utils::numeric(FLERR, arg[4], false, lmp);
+    std::vector<double> radii;
+
+    radii.resize(ntypes);
+
+    int iarg = 5;
+    int mytype;
+    while (iarg < narg) {
+      std::string typestr = utils::utf8_subst(arg[iarg]);
+      switch (utils::is_type(typestr)) {
+        case 0: {    // numeric
+          mytype = utils::inumeric(FLERR, typestr, false, lmp);
+          break;
+        }
+        case 1: {    // type label
+          if (!atom->labelmapflag)
+            error->all(FLERR, "Invalid atom type {} in compute guess_bonds", typestr);
+          mytype = atom->lmap->find_type(typestr, Atom::ATOM);
+          if (mytype == -1)
+            error->all(FLERR, "Unknown atom type {} in compute guess_bonds", typestr);
+          break;
+        }
+        default:    // invalid
+          error->all(FLERR, "Invalid format in compute guess_bonds");
+          break;
       }
-      case 1: {    // type label
-        if (!atom->labelmapflag)
-          error->all(FLERR, "Invalid atom type {} in compute guess_bonds", typestr);
-        mytype = atom->lmap->find_type(typestr, Atom::ATOM);
-        if (mytype == -1)
-          error->all(FLERR, "Unknown atom type {} in compute guess_bonds", typestr);
-        break;
-      }
-      default:    // invalid
-        error->all(FLERR, "Invalid format in compute guess_bonds");
-        break;
+      radii[mytype-1] = utils::numeric(FLERR, arg[iarg+1], false, lmp);
+      iarg += 2;
     }
-    radii[mytype-1] = utils::numeric(FLERR, arg[iarg+1], false, lmp);
-    iarg += 2;
+
+    for (auto radius : radii)
+      if (radius <= 0.0)
+        error->all(FLERR, "Compute guess_bonds: A positive radius must be provided for every atom type");
+
+    for (int i = 0; i < ntypes; i++) {
+      for (int j = 0; j < ntypes; j++) {
+        cutsq[i][j] = prefactor*(radii[i]+radii[j]);
+        cutsq[i][j] *= cutsq[i][j];
+      }
+    }
   }
 
-  for (auto radius : radii)
-    if (radius <= 0.0)
-      error->all(FLERR, "Compute guess_bonds: A positive radius must be provided for every atom type");
+  if (guess_mode == GuessMode::PAULING) {
 
-  for (int i = 0; i < atom->ntypes; i++) {
-    for (int j = 0; j < atom->ntypes; j++) {
-      cutsq[i][j] = prefactor*(radii[i]+radii[j]);
-      cutsq[i][j] *= cutsq[i][j];
+    double bond_order_cutoff = utils::numeric(FLERR, arg[4], false, lmp);
+    std::vector<std::vector<double>> bond_length(ntypes, std::vector<double>(ntypes, -1));
+    std::vector<std::vector<double>> bond_softness(ntypes, std::vector<double>(ntypes, -1));
+
+    int iarg = 5;
+    int mytypes[2];
+    while (iarg < narg) {
+
+      for (int i = 0; i < 2; i++) {
+        std::string typestr = utils::utf8_subst(arg[iarg++]);
+        switch (utils::is_type(typestr)) {
+          case 0: {    // numeric
+            mytypes[i] = utils::inumeric(FLERR, typestr, false, lmp);
+            break;
+          }
+          case 1: {    // type label
+            if (!atom->labelmapflag)
+              error->all(FLERR, "Invalid atom type {} in compute guess_bonds", typestr);
+            mytypes[i] = atom->lmap->find_type(typestr, Atom::ATOM);
+            if (mytype == -1)
+              error->all(FLERR, "Unknown atom type {} in compute guess_bonds", typestr);
+            break;
+          }
+          default:    // invalid
+            error->all(FLERR, "Invalid format in compute guess_bonds");
+            break;
+        }
+        bond_length[mytypes[0]-1][mytypes[1]-1] = utils::numeric(FLERR, arg[iarg], false, lmp);
+        bond_length[mytypes[1]-1][mytypes[0]-1] = utils::numeric(FLERR, arg[iarg], false, lmp);
+        iarg++;
+        bond_softness[mytypes[0]-1][mytypes[1]-1] = utils::numeric(FLERR, arg[iarg], false, lmp);
+        bond_softness[mytypes[1]-1][mytypes[0]-1] = utils::numeric(FLERR, arg[iarg], false, lmp);
+        iarg++;
+      }
+    }
+
+    for (int i = 0; i < ntypes; i++) {
+      for (int j = 0; j < ntypes; j++) {
+        if (bond_length[i][j] <= 0.0)
+          error->all(FLERR, "Compute guess_bonds: A positive bond length must be provided for every combination of atom types");
+        if (bond_softness[i][j] <= 0.0)
+          error->all(FLERR, "Compute guess_bonds: A positive bond softness must be provided for every combination of atom types");
+      }
+    }
+
+    for (int i = 0; i < ntypes; i++) {
+      for (int j = 0; j < ntypes; j++) {
+        cutsq[i][j] = (bond_length[i][j] - bond_softness[i][j] * std::log(bond_order_cutoff)) ** 2
+      }
     }
   }
 
@@ -215,7 +283,6 @@ void ComputeGuessBonds::compute_peratom()
         if (carray[atom1][0] == atom->bond_per_atom)
           error->one(FLERR, "New bond exceeded bonds per atom limit of {} in compute guess_bonds",
                      atom->bond_per_atom);
-
 
         bool duplicate = false;
         int nb = (int) carray[atom1][0];

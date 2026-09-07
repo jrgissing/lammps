@@ -36,8 +36,6 @@ class ComputeGuessBonds : public Compute {
 
  private:
   class NeighList *list;
-  double prefactor;
-  std::vector<double> radii;
   std::vector<std::vector<double>> cutsq;
   int maxlocal;        // size of atom selection and variable arrays
   double **carray;     // first column is num_bonds, rest list tags of bonded atoms
