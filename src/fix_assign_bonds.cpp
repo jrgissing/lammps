@@ -12,7 +12,7 @@
    See the README file in the top-level LAMMPS directory.
 ------------------------------------------------------------------------- */
 
-#include "fix_guess_bonds.h"
+#include "fix_assign_bonds.h"
 
 #include "atom.h"
 #include "compute_guess_bonds.h"
@@ -30,84 +30,57 @@ using namespace FixConst;
 
 /* ---------------------------------------------------------------------- */
 
-FixGuessBonds::FixGuessBonds(LAMMPS *lmp, int narg, char **arg) :
+FixAssignBonds::FixAssignBonds(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg), cgb(nullptr), fss(nullptr)
 {
-  if (narg < 11) utils::missing_cmd_args(FLERR,"fix guess_bonds", error);
+  if (narg < 11) utils::missing_cmd_args(FLERR,"fix assign/bonds", error);
   dynamic_group_allow = 1;
+
+  groupid = arg[1];
 
   nevery_history = utils::inumeric(FLERR, arg[3], false, lmp);
   nrepeat_history = utils::inumeric(FLERR, arg[4], false, lmp);
   nfreq_history = utils::inumeric(FLERR, arg[5], false, lmp);
   bonded_fraction = utils::numeric(FLERR, arg[6], false, lmp);
 
-  guess_mode = arg[7];
+  guess_bonds_id = arg[7];
 
-  prefactor = utils::numeric(FLERR, arg[8], false, lmp);
+  if (str.size() >= 2 && str.compare(0, 2, "c_") == 0) {
+    str.erase(0, 2);
+  } else error->all(FLERR, "Fix assign/bonds: Improper syntax for compute guess/bonds ID {} argument", guess_bonds_id);
 
-  int iarg = 8;
-  int mytype;
-  for (int i = iarg; i < narg; i++)
-    radii_list += fmt::format("{} ", arg[i]);
+  int guess_bonds_index = modify->get_compute_by_id(guess_bonds_id);
+  if (guess_bonds_index)
+    error->all(FLERR, "Fix assign/bonds: Compute guess/bonds ID {} for fix assign/bonds does not exist", guess_bonds_id);
 
-  iarg++;
+  class ComputeGuessBonds *cgb = modify->compute[guess_bonds_index];
 
-  while (iarg < narg) {
-    std::string typestr = utils::utf8_subst(arg[iarg]);
-    switch (utils::is_type(typestr)) {
-      case 0: {    // numeric
-        mytype = utils::inumeric(FLERR, typestr, false, lmp);
-        break;
-      }
-      case 1: {    // type label
-        if (!atom->labelmapflag)
-          error->all(FLERR, "Invalid atom type {} in fix guess_bonds", typestr);
-        mytype = atom->lmap->find_type(typestr, Atom::ATOM);
-        if (mytype == -1)
-          error->all(FLERR, "Unknown atom type {} in fix guess_bonds", typestr);
-        break;
-      }
-      default:    // invalid
-        error->all(FLERR, "Invalid keyword {} in fix guess_bonds", typestr);
-        break;
-    }
-    radii[mytype-1] = utils::numeric(FLERR, arg[iarg+1], false, lmp);
-    iarg += 2;
+  if (strcmp(cgb->style, "guess/bonds") != 0) {
+    error->all(FLERR, "Fix assign/bonds: Fix requires a compute of style 'guess/bonds'");
   }
-
-  groupid = arg[1];
-
-  std::string fss_fixid = fmt::format("{}_fix_store_state", id);
 }
 
-void FixGuessBonds::post_constructor()
+void FixAssignBonds::post_constructor()
 {
-  // create instances of compute guess_bonds
-
-  std::string computeid = fmt::format("{}_compute_guess_bonds", id);
-  std::string check = fmt::format("{} {} guess_bonds {} {}", computeid, groupid, guess_mode, radii_list);
-  cgb = dynamic_cast<ComputeGuessBonds *>(modify->add_compute(
-        fmt::format("{} {} guess_bonds radii {}", computeid, groupid, radii_list)));
-
   std::string fss_fixid = fmt::format("{}_fix_store_state", id);
 
   fss = dynamic_cast<FixStoreState *>(modify->get_fix_by_id(fss_fixid));
   if (!fss)
     fss = dynamic_cast<FixStoreState *>(modify->add_fix(
-          fmt::format("{} {} store/state 0 c_{}[*] history {} {} {}", fss_fixid, groupid, computeid,
+          fmt::format("{} {} store/state 0 c_{}[*] history {} {} {}", fss_fixid, groupid, guess_bonds_id,
                       nevery_history, nrepeat_history, nfreq_history)));
 }
 
 /* ---------------------------------------------------------------------- */
 
-int FixGuessBonds::setmask()
+int FixAssignBonds::setmask()
 {
   int mask = 0;
   mask |= END_OF_STEP;
   return mask;
 }
 
-void FixGuessBonds::end_of_step()
+void FixAssignBonds::end_of_step()
 {
   int **bond_type = atom->bond_type;
   int *num_bond = atom->num_bond;
@@ -135,7 +108,7 @@ void FixGuessBonds::end_of_step()
         }
         if (!found_bond) {
           if (ave_bond_atoms[j][0] >= size_peratom_cols-1)
-            error->one(FLERR,"Fix guess_bonds: too many bonds per atom, increase bonds per atom");
+            error->one(FLERR,"Fix assign/bonds: too many bonds per atom, increase maximum bonds per atom");
 
           ave_bond_atoms[j][0]++;
           ave_bond_atoms[j][ave_bond_atoms[j][0]] = history[i][j][k+1];

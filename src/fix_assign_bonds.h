@@ -13,37 +13,32 @@
 
 #ifdef FIX_CLASS
 // clang-format off
-FixStyle(guess_bonds,FixGuessBonds);
+FixStyle(assign_bonds,FixAssignBonds);
 // clang-format on
 #else
 
-#ifndef LMP_FIX_GUESS_BONDS_H
-#define LMP_FIX_GUESS_BONDS_H
+#ifndef LMP_FIX_ASSIGN_BONDS_H
+#define LMP_FIX_ASSIGN_BONDS_H
 
 #include "fix.h"
 
 namespace LAMMPS_NS {
 
-class FixGuessBonds : public Fix {
+class FixAssignBonds : public Fix {
  public:
-  FixGuessBonds(class LAMMPS *, int, char **);
-  //~FixGuessBonds() override;
+  FixAssignBonds(class LAMMPS *, int, char **);
+  //~FixAssignBonds() override;
   void post_constructor() override;
   int setmask() override;
   void end_of_step() override;
 
  private:
   std::string groupid;
-  std::string radii_list;
+  std::string guess_bonds_id;
   int nevery_history;      // store a history frame once every Nevery steps
   int nrepeat_history;     // # of history frames to store
   int nfreq_history;       // enable output of stored history on these steps
   int bonded_fraction;     // cutoff for fraction of sampled timesteps that bond exists
-
-  double prefactor;
-  std::vector<double> radii;
-  std::vector<std::vector<double>> cutsq;
-  class ComputeGuessBonds *cgb;
   class FixStoreState *fss;
 };
 
