@@ -42,9 +42,9 @@ ComputeGuessBonds::ComputeGuessBonds(LAMMPS *lmp, int narg, char **arg) :
   dynamic_group_allow = 1;
 
   GuessMode guess_mode;      // distance vs pauling keywords
-  if (strcmp(arg[3],"distance") != 0) {
+  if (strcmp(arg[3],"distance") == 0) {
     guess_mode = GuessMode::DISTANCE;
-  } else if (strcmp(arg[3],"pauling") != 0) {
+  } else if (strcmp(arg[3],"pauling") == 0) {
     guess_mode = GuessMode::PAULING;
   } else error->all(FLERR,"Unknown compute guess_bonds keyword {}", arg[3]);
 
@@ -125,13 +125,13 @@ ComputeGuessBonds::ComputeGuessBonds(LAMMPS *lmp, int narg, char **arg) :
             error->all(FLERR, "Invalid format in compute guess_bonds");
             break;
         }
-        bond_length[mytypes[0]-1][mytypes[1]-1] = utils::numeric(FLERR, arg[iarg], false, lmp);
-        bond_length[mytypes[1]-1][mytypes[0]-1] = utils::numeric(FLERR, arg[iarg], false, lmp);
-        iarg++;
-        bond_softness[mytypes[0]-1][mytypes[1]-1] = utils::numeric(FLERR, arg[iarg], false, lmp);
-        bond_softness[mytypes[1]-1][mytypes[0]-1] = utils::numeric(FLERR, arg[iarg], false, lmp);
-        iarg++;
       }
+      bond_length[mytypes[0]-1][mytypes[1]-1] = utils::numeric(FLERR, arg[iarg], false, lmp);
+      bond_length[mytypes[1]-1][mytypes[0]-1] = utils::numeric(FLERR, arg[iarg], false, lmp);
+      iarg++;
+      bond_softness[mytypes[0]-1][mytypes[1]-1] = utils::numeric(FLERR, arg[iarg], false, lmp);
+      bond_softness[mytypes[1]-1][mytypes[0]-1] = utils::numeric(FLERR, arg[iarg], false, lmp);
+      iarg++;
     }
 
     for (int i = 0; i < ntypes; i++) {

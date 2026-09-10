@@ -33,7 +33,7 @@ using namespace FixConst;
 FixAssignBonds::FixAssignBonds(LAMMPS *lmp, int narg, char **arg) :
   Fix(lmp, narg, arg), fss(nullptr)
 {
-  if (narg < 11) utils::missing_cmd_args(FLERR,"fix assign/bonds", error);
+  if (narg < 8) utils::missing_cmd_args(FLERR,"fix assign/bonds", error);
   dynamic_group_allow = 1;
 
   groupid = arg[1];
