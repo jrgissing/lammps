@@ -31,7 +31,7 @@ using namespace FixConst;
 /* ---------------------------------------------------------------------- */
 
 FixAssignBonds::FixAssignBonds(LAMMPS *lmp, int narg, char **arg) :
-  Fix(lmp, narg, arg), cgb(nullptr), fss(nullptr)
+  Fix(lmp, narg, arg), fss(nullptr)
 {
   if (narg < 11) utils::missing_cmd_args(FLERR,"fix assign/bonds", error);
   dynamic_group_allow = 1;
@@ -45,19 +45,15 @@ FixAssignBonds::FixAssignBonds(LAMMPS *lmp, int narg, char **arg) :
 
   guess_bonds_id = arg[7];
 
-  if (str.size() >= 2 && str.compare(0, 2, "c_") == 0) {
-    str.erase(0, 2);
+  if (guess_bonds_id.size() >= 2 && guess_bonds_id.compare(0, 2, "c_") == 0) {
+    guess_bonds_id.erase(0, 2);
   } else error->all(FLERR, "Fix assign/bonds: Improper syntax for compute guess/bonds ID {} argument", guess_bonds_id);
 
-  int guess_bonds_index = modify->get_compute_by_id(guess_bonds_id);
-  if (guess_bonds_index)
+  auto *cgb = modify->get_compute_by_id(guess_bonds_id);
+  if (!cgb)
     error->all(FLERR, "Fix assign/bonds: Compute guess/bonds ID {} for fix assign/bonds does not exist", guess_bonds_id);
-
-  class ComputeGuessBonds *cgb = modify->compute[guess_bonds_index];
-
-  if (strcmp(cgb->style, "guess/bonds") != 0) {
+  if (strcmp(cgb->style, "guess/bonds") != 0)
     error->all(FLERR, "Fix assign/bonds: Fix requires a compute of style 'guess/bonds'");
-  }
 }
 
 void FixAssignBonds::post_constructor()
