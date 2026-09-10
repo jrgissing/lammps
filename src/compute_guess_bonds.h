@@ -13,7 +13,7 @@
 
 #ifdef COMPUTE_CLASS
 // clang-format off
-ComputeStyle(guess_bonds,ComputeGuessBonds);
+ComputeStyle(guess/bonds,ComputeGuessBonds);
 // clang-format on
 #else
 
