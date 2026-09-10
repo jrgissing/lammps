@@ -35,17 +35,13 @@ FixGuessBonds::FixGuessBonds(LAMMPS *lmp, int narg, char **arg) :
 {
   if (narg < 11) utils::missing_cmd_args(FLERR,"fix guess_bonds", error);
   dynamic_group_allow = 1;
-  int ntypes = atom->ntypes;
-  radii.resize(ntypes);
-  cutsq.resize(ntypes);
-  for (auto &row : cutsq) row.resize(ntypes);
 
   nevery_history = utils::inumeric(FLERR, arg[3], false, lmp);
   nrepeat_history = utils::inumeric(FLERR, arg[4], false, lmp);
   nfreq_history = utils::inumeric(FLERR, arg[5], false, lmp);
   bonded_fraction = utils::numeric(FLERR, arg[6], false, lmp);
 
-  if (strcmp(arg[7],"radii") != 0) error->all(FLERR,"Unknown fix guess_bonds keyword {}", arg[6]);
+  guess_mode = arg[7];
 
   prefactor = utils::numeric(FLERR, arg[8], false, lmp);
 
@@ -79,17 +75,6 @@ FixGuessBonds::FixGuessBonds(LAMMPS *lmp, int narg, char **arg) :
     iarg += 2;
   }
 
-  for (auto radius : radii)
-    if (radius <= 0.0)
-      error->all(FLERR, "Fix guess_bonds: A positive radius must be provided for every atom type");
-
-  for (int i = 0; i < atom->ntypes; i++) {
-    for (int j = 0; j < atom->ntypes; j++) {
-      cutsq[i][j] = prefactor*(radii[i]+radii[j]);
-      cutsq[i][j] *= cutsq[i][j];
-    }
-  }
-
   groupid = arg[1];
 
   std::string fss_fixid = fmt::format("{}_fix_store_state", id);
@@ -100,7 +85,7 @@ void FixGuessBonds::post_constructor()
   // create instances of compute guess_bonds
 
   std::string computeid = fmt::format("{}_compute_guess_bonds", id);
-  std::string check = fmt::format("{} {} guess_bonds radii {}", computeid, groupid, radii_list);
+  std::string check = fmt::format("{} {} guess_bonds {} {}", computeid, groupid, guess_mode, radii_list);
   cgb = dynamic_cast<ComputeGuessBonds *>(modify->add_compute(
         fmt::format("{} {} guess_bonds radii {}", computeid, groupid, radii_list)));
 
@@ -165,7 +150,7 @@ void FixGuessBonds::end_of_step()
     int num_ave_bonds = ave_bond_atoms[i][0];
     for (int j = 0; j < num_ave_bonds; j++) {
       ave_bond_persistence[i][j+1] /= nrepeat_history;
-      if (ave_bond_persistence[i][j+1] > bonded_fraction) {
+      if (ave_bond_persistence[i][j+1] >= bonded_fraction) {
         tagint tag_j = ave_bond_atoms[i][j+1];
 
         if (force->newton_bond && atom->tag[i] > tag_j) continue;

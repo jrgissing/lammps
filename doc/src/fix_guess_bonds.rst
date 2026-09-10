@@ -45,8 +45,8 @@ be applied for analysis or algorithmic purposes.
 The *Nevery*, *Nrepeat*, and *Nfreq* values are used for an internally-
 created :doc:`fix store/state <fix_store_state>` command that saves bond
 history. If the fraction of times that is a bond is identified, out of
-*Nrepeat* sampled timesteps, is greater than *fraction*, then this fix
-assigns a bond. For example if *fraction* = 0.5, and a bond was
+*Nrepeat* sampled timesteps, is greater than or equal to *fraction*, then
+this fix assigns a bond. For example if *fraction* = 0.5, and a bond was
 identified between atoms *i* and *j* for 60 of the 100 previously sampled
 timesteps, then a bond is added between atom *i* and *j* on the current
 timestep. The bonds identified by this fix are added as explicit bonds so
